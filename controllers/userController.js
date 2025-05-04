@@ -4,17 +4,6 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 const {swell} = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
-exports.getUsers = (req, res) => {
-    res.json([
-        { id: 1, name: 'Alice' },
-        { id: 2, name: 'Bob' }
-    ]);
-};
-
-exports.createUser = (req, res) => {
-    const { name } = req.body;
-    res.status(201).json({ id: Date.now(), name });
-};
 
 
 /**
