@@ -8,7 +8,7 @@ swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
 /**
  * Sends an OTP to a user's WhatsApp number
- * @param {string} toPhoneNumber - in the format 'whatsapp:+1234567890'
+ * @param {string} toPhoneNumber - in the format 'whatsapp:+10234567890'
  */
 exports.sendOtpViaWhatsApp = async (req, res) => {
     try {
