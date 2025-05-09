@@ -125,3 +125,43 @@ exports.searchProductsByFactory = async (req, res) => {
         });
     }
 };
+
+
+exports.cancelOrder = async (req, res) => {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing order ID',
+        });
+    }
+
+    try {
+        // Fetch the order first to ensure it exists
+        const order = await swell.get(`/orders/${orderId}`);
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found',
+            });
+        }
+
+        // Cancel the order
+        const cancelledOrder = await swell.put(`/orders/${orderId}`, {
+            cancelled: true
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Order cancelled successfully',
+            order: cancelledOrder,
+        });
+    } catch (err) {
+        console.error('Error cancelling order:', err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to cancel order',
+        });
+    }
+};

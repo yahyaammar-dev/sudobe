@@ -1,9 +1,8 @@
 const twilio = require('twilio');
 require('dotenv').config();
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-const {swell} = require('swell-node');
+const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
-
 
 
 /**
@@ -54,8 +53,6 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
-
-
 
 
 
