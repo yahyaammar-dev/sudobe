@@ -4,7 +4,7 @@ const catalogueRoutes = require('./routes/catalogueRoutes');
 const checkoutRoutes = require('./routes/checkoutRoutes');
 const accountsController = require('./routes/accountsRoutes')
 const contactRoutes = require('./routes/contact');
-const notificationRoutes = require('./routes/notificationRoutes');
+// const notificationRoutes = require('./routes/notificationRoutes');
 
 
 
@@ -16,7 +16,7 @@ app.use('/api/catalogue', catalogueRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/account', accountsController);
 app.use('/api/contact', contactRoutes);
-app.use('/api/notifications', notificationRoutes);
+// app.use('/api/notifications', notificationRoutes);
 
 
 
