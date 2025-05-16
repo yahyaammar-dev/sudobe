@@ -45,7 +45,8 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
 
         return res.status(200).json({
             status: true,
-            sid: message.sid
+            sid: message.sid,
+            otp: otp
         });
 
     } catch (err) {
