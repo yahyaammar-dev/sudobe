@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for sudobe on 2025-05-16T07:53:07Z
+# fly.toml app configuration file generated for sudobe on 2025-05-16T08:11:27Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -9,7 +9,7 @@ primary_region = 'sin'
 [build]
 
 [http_service]
-  internal_port = 3000
+  internal_port = 5000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
