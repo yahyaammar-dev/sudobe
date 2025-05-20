@@ -165,3 +165,92 @@ exports.cancelOrder = async (req, res) => {
         });
     }
 };
+
+exports.getFeaturedProducts = async (req, res) => {
+    try {
+        const { account } = req.query;
+
+        if (!account) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing account',
+            });
+        }
+
+        // Parallelize these calls
+        const [promotionsResponse, productsResponse, accountResponse] = await Promise.all([
+            swell.get('/promotions', { where: { active: true } }),
+            swell.get('/products', { limit: 50 }), // Add filtering if needed
+            swell.get(`/accounts/${account}`, { fields: ['metadata.favorites'] }),
+        ]);
+
+        const promotions = promotionsResponse.results || [];
+        const products = productsResponse.results || [];
+        const favoriteIds = accountResponse.metadata?.favorites || [];
+
+        // Build product-level discount map
+        const discountMap = {};
+        promotions.forEach(promo => {
+            promo.discounts?.forEach(discount => {
+                if (discount.type === 'product' && discount.value_type === 'percent') {
+                    discountMap[discount.product_id] = {
+                        percent: discount.value_percent
+                    };
+                }
+            });
+        });
+
+        // Extract unique factory IDs
+        const factoryIds = [
+            ...new Set(products.map(p => p.content.factory_id).filter(Boolean))
+        ];
+
+        // Batch-fetch factory accounts in parallel (avoid one-by-one requests)
+        const factories = factoryIds.length > 0
+            ? await swell.get('/accounts', {
+                where: {
+                    id: { $in: factoryIds }
+                },
+                limit: factoryIds.length
+            })
+            : { results: [] };
+
+        const factoryMap = {};
+        factories.results?.forEach(f => {
+            factoryMap[f.id] = f;
+        });
+
+        // Enrich products
+        const enrichedProducts = products.map(p => {
+            const discount = discountMap[p.id];
+            const originalPrice = p.price;
+            const discountPercent = discount?.percent || 0;
+            const discountedPrice = discount
+                ? +(originalPrice * (1 - discountPercent / 100)).toFixed(2)
+                : null;
+
+            return {
+                ...p,
+                isFavorite: favoriteIds.includes(p.id),
+                discount_percent: discountPercent,
+                discounted_price: discountedPrice,
+                content: {
+                    ...p.content,
+                    factory: factoryMap[p.content.factory_id] || null
+                }
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            products: enrichedProducts,
+        });
+
+    } catch (error) {
+        console.error('Error fetching featured products:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+        });
+    }
+};

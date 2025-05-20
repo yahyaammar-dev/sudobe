@@ -5,5 +5,6 @@ const catalogueController = require('../controllers/catalogueController');
 router.get('/search-products', catalogueController.searchProducts);
 router.get('/by-factory/:factoryId', catalogueController.searchProductsByFactory);
 router.get('/cancelorder/:orderId', catalogueController.cancelOrder);
+router.get('/featured-products', catalogueController.getFeaturedProducts);
 
 module.exports = router;

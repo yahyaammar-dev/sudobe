@@ -13,5 +13,4 @@ router.post('/:accountId/favorites', accountsController.updateFavorites);
 router.get('/:accountId/favorites', accountsController.getFavoriteProducts);
 
 
-
 module.exports = router;
