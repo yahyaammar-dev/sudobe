@@ -32,7 +32,7 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
         const message = await client.messages.create({
             from: process.env.TWILIO_WHATSAPP_FROM,
             to: `whatsapp:${toPhoneNumber}`,
-            body: `Your OTP is: ${otp}`
+            body: `Your OTP is: ${otp}`,
         });
 
         // Store OTP in the customer's content
@@ -46,7 +46,8 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
         return res.status(200).json({
             status: true,
             sid: message.sid,
-            otp: otp
+            otp: otp,
+            email: customer.email
         });
 
     } catch (err) {
