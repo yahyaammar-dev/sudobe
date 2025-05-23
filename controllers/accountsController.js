@@ -17,17 +17,57 @@ exports.getOrdersByUserId = async (req, res) => {
 
     try {
         const orders = await swell.get('/orders', {
-            where: {
-                account_id: userId
-            },
-            limit: 100, // adjust as needed
-            page: 1
+            where: { account_id: userId },
+            limit: 100,
+            page: 1,
+            expand: ['items.product']
         });
+
+        const updatedOrders = await Promise.all(orders.results.map(async (order) => {
+            if (!Array.isArray(order.items) || order.items.length === 0) {
+                // Skip orders with no items or empty items array
+                return {
+                    ...order,
+                    expected_delivery: null
+                };
+            }
+
+            const firstItem = order.items[0];
+            const product = firstItem?.product;
+            let leadTimeDays = 0;
+
+            // Try getting product's lead time
+            const productLeadTime = product?.content?.lead_time;
+            if (Array.isArray(productLeadTime) && productLeadTime.length > 0) {
+                leadTimeDays = productLeadTime[0].max_days || 0;
+            } else if (product?.content?.factory_id) {
+                // Fallback to factory's lead time
+                try {
+                    const factory = await swell.get(`/accounts/${product.content.factory_id}`);
+                    const factoryLeadTime = factory?.content?.lead_time;
+                    if (Array.isArray(factoryLeadTime) && factoryLeadTime.length > 0) {
+                        leadTimeDays = factoryLeadTime[0].max_days || 0;
+                    }
+                } catch (factoryErr) {
+                    console.warn(`Failed to fetch factory for product ${product.id}:`, factoryErr.message);
+                }
+            }
+
+            // Calculate expected delivery
+            const createdDate = new Date(order.date_created);
+            const expectedDeliveryDate = new Date(createdDate);
+            expectedDeliveryDate.setDate(createdDate.getDate() + leadTimeDays);
+
+            return {
+                ...order,
+                expected_delivery: expectedDeliveryDate.toISOString()
+            };
+        }));
 
         return res.status(200).json({
             success: true,
             message: 'Orders fetched successfully',
-            orders: orders.results || [],
+            orders: updatedOrders,
             count: orders.count,
             page: orders.page,
             pages: orders.pages
@@ -40,6 +80,7 @@ exports.getOrdersByUserId = async (req, res) => {
         });
     }
 };
+
 
 exports.getOrderById = async (req, res) => {
     const { orderId } = req.params;
