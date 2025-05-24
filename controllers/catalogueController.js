@@ -395,3 +395,89 @@ exports.getFeaturedProducts = async (req, res) => {
         });
     }
 };
+
+
+
+
+
+
+exports.getProductDetails = async (req, res) => {
+    try {
+        const productId = req.params.id;
+        const { account } = req.query;
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing product ID',
+            });
+        }
+
+        const [productResponse, promotionsResponse, accountResponse] = await Promise.all([
+            swell.get(`/products/${productId}`),
+            swell.get('/promotions', { where: { active: true } }),
+            account ? swell.get(`/accounts/${account}`, { fields: ['metadata.favorites'] }) : Promise.resolve({})
+        ]);
+
+        const product = productResponse || null;
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        const favoriteIds = accountResponse?.metadata?.favorites || [];
+
+        // Find discount for the specific product
+        let discountPercent = 0;
+        promotionsResponse.results?.forEach(promo => {
+            promo.discounts?.forEach(discount => {
+                if (
+                    discount.type === 'product' &&
+                    discount.value_type === 'percent' &&
+                    discount.product_id === productId
+                ) {
+                    discountPercent = discount.value_percent;
+                }
+            });
+        });
+
+        // Compute discounted price
+        const originalPrice = product.price;
+        const discountedPrice = discountPercent
+            ? +(originalPrice * (1 - discountPercent / 100)).toFixed(2)
+            : null;
+
+        // Fetch factory info if exists
+        let factory = null;
+        const factoryId = product.content?.factory_id;
+        if (factoryId) {
+            const factoryResponse = await swell.get(`/accounts/${factoryId}`);
+            factory = factoryResponse || null;
+        }
+
+        const enrichedProduct = {
+            ...product,
+            isFavorite: favoriteIds.includes(product.id),
+            discount_percent: discountPercent,
+            discounted_price: discountedPrice,
+            content: {
+                ...product.content,
+                factory
+            }
+        };
+
+        return res.status(200).json({
+            success: true,
+            product: enrichedProduct,
+        });
+
+    } catch (error) {
+        console.error('Error fetching product details:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+        });
+    }
+};
