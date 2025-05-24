@@ -7,5 +7,7 @@ router.get('/by-factory/:factoryId/:accountId', catalogueController.searchProduc
 router.get('/cancelorder/:orderId', catalogueController.cancelOrder);
 router.get('/featured-products', catalogueController.getFeaturedProducts);
 router.get('/factories', catalogueController.getFactories);
+router.get('/productDetails/:id', catalogueController.getProductDetails);
+
 
 module.exports = router;
