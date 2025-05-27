@@ -2,26 +2,64 @@ require('dotenv').config();
 const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
-exports.searchProducts = async (req, res) => {
+// exports.searchProducts = async (req, res) => {
+//     try {
+//         const {
+//             q,              // search query
+//             limit = 25,
+//             page = 1,
+//             category,       // optional: category ID
+//             sort,           // optional: "name asc", "price desc", etc.
+//             fields,         // optional: "name,slug"
+//             expand          // optional: "variants:10"
+//         } = req.query;
+
+//         const where = { active: true };
+//         if (category) {
+//             where.categories = category;
+//         }
+
+//         const result = await swell.get('/products', {
+//             search: q || undefined,
+//             where,
+//             limit: parseInt(limit),
+//             page: parseInt(page),
+//             sort: sort || undefined,
+//             fields: fields || undefined,
+//             expand: expand || undefined,
+//         });
+
+//         res.json({
+//             success: true,
+//             page: result.page,
+//             pages: result.pages,
+//             count: result.count,
+//             results: result.results,
+//         });
+//     } catch (err) {
+//         console.error('Error fetching products:', err.message);
+//         res.status(500).json({ success: false, message: 'Internal Server Error' });
+//     }
+// }
+
+
+exports.searchProductsGroupedByFactory = async (req, res) => {
     try {
         const {
             q,              // search query
-            limit = 25,
+            limit = 100,    // total limit across all factories
             page = 1,
-            category,       // optional: category ID
-            sort,           // optional: "name asc", "price desc", etc.
-            fields,         // optional: "name,slug"
-            expand          // optional: "variants:10"
+            sort,
+            fields,
+            expand,
         } = req.query;
 
-        const where = { active: true };
-        if (category) {
-            where.categories = category;
-        }
-
+        // Step 1: Search products with the given query
         const result = await swell.get('/products', {
             search: q || undefined,
-            where,
+            where: {
+                'content.factory_id': { $ne: null } // only include products with factory
+            },
             limit: parseInt(limit),
             page: parseInt(page),
             sort: sort || undefined,
@@ -29,19 +67,66 @@ exports.searchProducts = async (req, res) => {
             expand: expand || undefined,
         });
 
+        const products = result.results || [];
+
+        // Step 2: Group products by factory_id
+        const factoryGroups = {};
+        const factoryIds = new Set();
+
+        for (const product of products) {
+            const factoryId = product?.content?.factory_id;
+            if (!factoryId) continue;
+
+            factoryIds.add(factoryId);
+            if (!factoryGroups[factoryId]) {
+                factoryGroups[factoryId] = [];
+            }
+            factoryGroups[factoryId].push(product);
+        }
+
+        // Step 3: Fetch account details for each factory
+        const factories = {};
+        const factoryArray = Array.from(factoryIds);
+
+        if (factoryArray.length > 0) {
+            const factoryAccounts = await swell.get('/accounts', {
+                where: {
+                    id: { $in: factoryArray }
+                },
+                limit: 100,
+            });
+
+            for (const factory of factoryAccounts.results || []) {
+                factories[factory.id] = {
+                    id: factory.id,
+                    name: factory.name,
+                    email: factory.email,
+                    phone: factory.phone,
+                    ...factory
+                };
+            }
+        }
+
+        // Step 4: Combine factories with their products
+        const groupedResults = {};
+        for (const factoryId of Object.keys(factoryGroups)) {
+            groupedResults[factories[factoryId]?.name || factoryId] = factoryGroups[factoryId];
+        }
+
+        // Step 5: Return final result
         res.json({
             success: true,
+            total: result.count,
             page: result.page,
             pages: result.pages,
-            count: result.count,
-            results: result.results,
+            groupedByFactory: groupedResults,
         });
+
     } catch (err) {
-        console.error('Error fetching products:', err.message);
+        console.error('Error in searchProductsGroupedByFactory:', err.message);
         res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
-}
-
+};
 
 
 
