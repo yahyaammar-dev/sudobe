@@ -23,7 +23,9 @@ exports.updateOrderStatus = async (req, res) => {
             'pending_payment',
             'payment_received',
             'order_inspected',
-            'order_shipped'
+            'order_shipped',
+            'order_cancelled',
+            'order_returned'
         ];
 
         if (!validStatuses.includes(status)) {
