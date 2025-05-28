@@ -23,27 +23,34 @@ exports.getOrdersByUserId = async (req, res) => {
             expand: ['items.product']
         });
 
+
         const updatedOrders = await Promise.all(orders.results.map(async (order) => {
             if (!Array.isArray(order.items) || order.items.length === 0) {
-                // Skip orders with no items or empty items array
                 return {
                     ...order,
                     expected_delivery: null
                 };
             }
 
+
+
+            let totalItems = 0;
+
             const firstItem = order.items[0];
             const product = firstItem?.product;
             let leadTimeDays = 0;
 
-            // Try getting product's lead time
+            // Sum up item quantities for this order
+            order.items.forEach(item => {
+                totalItems += item.quantity || 0;
+            });
+
             const productLeadTime = product?.content?.lead_time;
+            const factory = await swell.get(`/accounts/${product?.content?.factory_id}`);
             if (Array.isArray(productLeadTime) && productLeadTime.length > 0) {
                 leadTimeDays = productLeadTime[0].max_days || 0;
-            } else if (product?.content?.factory_id) {
-                // Fallback to factory's lead time
+            } else if (factory) {
                 try {
-                    const factory = await swell.get(`/accounts/${product.content.factory_id}`);
                     const factoryLeadTime = factory?.content?.lead_time;
                     if (Array.isArray(factoryLeadTime) && factoryLeadTime.length > 0) {
                         leadTimeDays = factoryLeadTime[0].max_days || 0;
@@ -53,14 +60,15 @@ exports.getOrdersByUserId = async (req, res) => {
                 }
             }
 
-            // Calculate expected delivery
             const createdDate = new Date(order.date_created);
             const expectedDeliveryDate = new Date(createdDate);
             expectedDeliveryDate.setDate(createdDate.getDate() + leadTimeDays);
 
             return {
                 ...order,
-                expected_delivery: expectedDeliveryDate.toISOString()
+                expected_delivery: expectedDeliveryDate.toISOString(),
+                totalItems: totalItems,
+                factory
             };
         }));
 
@@ -70,7 +78,7 @@ exports.getOrdersByUserId = async (req, res) => {
             orders: updatedOrders,
             count: orders.count,
             page: orders.page,
-            pages: orders.pages
+            pages: orders.pages,
         });
     } catch (err) {
         console.error('Error fetching orders:', err.message);
