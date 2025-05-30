@@ -108,9 +108,14 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
         }
 
         // Step 4: Combine factories with their products
-        const groupedResults = {};
+        const groupedResults = [];
         for (const factoryId of Object.keys(factoryGroups)) {
-            groupedResults[factories[factoryId]?.name || factoryId] = factoryGroups[factoryId];
+            const factoryDetails = factories[factoryId];
+
+            groupedResults.push({
+                factory: factoryDetails,
+                products: factoryGroups[factoryId],
+            });
         }
 
         // Step 5: Return final result
