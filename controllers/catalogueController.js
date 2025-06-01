@@ -396,10 +396,9 @@ exports.getFactories = async (req, res) => {
 };
 
 
-
 exports.getFeaturedProducts = async (req, res) => {
     try {
-        const { account } = req.query;
+        const { account, page = 1, limit = 20 } = req.query;
 
         if (!account) {
             return res.status(400).json({
@@ -408,18 +407,30 @@ exports.getFeaturedProducts = async (req, res) => {
             });
         }
 
-        // Parallelize these calls
+        const parsedPage = parseInt(page, 10);
+        const parsedLimit = parseInt(limit, 10);
+
+        // Fetch promotions, featured products, and account favorites in parallel
         const [promotionsResponse, productsResponse, accountResponse] = await Promise.all([
             swell.get('/promotions', { where: { active: true } }),
-            swell.get('/products', { limit: 50 }), // Add filtering if needed
+            swell.get('/products', {
+                where: {
+                    'content.featured': true
+                },
+                page: parsedPage,
+                limit: parsedLimit,
+            }),
             swell.get(`/accounts/${account}`, { fields: ['metadata.favorites'] }),
         ]);
 
         const promotions = promotionsResponse.results || [];
         const products = productsResponse.results || [];
+        const totalProducts = productsResponse.count || 0;
+        const totalPages = productsResponse.pages || 1;
+
         const favoriteIds = accountResponse.metadata?.favorites || [];
 
-        // Build product-level discount map
+        // Build discount map
         const discountMap = {};
         promotions.forEach(promo => {
             promo.discounts?.forEach(discount => {
@@ -431,17 +442,12 @@ exports.getFeaturedProducts = async (req, res) => {
             });
         });
 
-        // Extract unique factory IDs
-        const factoryIds = [
-            ...new Set(products.map(p => p.content.factory_id).filter(Boolean))
-        ];
+        // Get unique factory IDs
+        const factoryIds = [...new Set(products.map(p => p.content.factory_id).filter(Boolean))];
 
-        // Batch-fetch factory accounts in parallel (avoid one-by-one requests)
         const factories = factoryIds.length > 0
             ? await swell.get('/accounts', {
-                where: {
-                    id: { $in: factoryIds }
-                },
+                where: { id: { $in: factoryIds } },
                 limit: factoryIds.length
             })
             : { results: [] };
@@ -451,7 +457,7 @@ exports.getFeaturedProducts = async (req, res) => {
             factoryMap[f.id] = f;
         });
 
-        // Enrich products
+        // Enrich each product
         const enrichedProducts = products.map(p => {
             const discount = discountMap[p.id];
             const originalPrice = p.price;
@@ -475,6 +481,12 @@ exports.getFeaturedProducts = async (req, res) => {
         return res.status(200).json({
             success: true,
             products: enrichedProducts,
+            pagination: {
+                currentPage: parsedPage,
+                perPage: parsedLimit,
+                total: totalProducts,
+                totalPages: totalPages
+            }
         });
 
     } catch (error) {
