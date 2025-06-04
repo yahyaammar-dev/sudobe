@@ -19,7 +19,7 @@ app.use('/api/catalogue', catalogueRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/account', accountsController);
 app.use('/api/contact', contactRoutes);
-app.use('/webhook/hello', webhookRoutes);
+app.use('/webhook', webhookRoutes);
 
 app.get('/', async (req, res) => {
   console.log("why are you hitting /")
