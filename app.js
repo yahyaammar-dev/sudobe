@@ -22,6 +22,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/webhook/hello', webhookRoutes);
 
 app.get('/', async (req, res) => {
+  console.log("why are you hitting /")
   res.send('API is running...');
 });
 
