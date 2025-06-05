@@ -2,6 +2,7 @@ const twilio = require('twilio');
 require('dotenv').config();
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const { swell } = require('swell-node');
+const { transformProducts } = require('../helpers/functions');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
 exports.updateOrderStatus = async (req, res) => {
@@ -136,8 +137,10 @@ exports.getOrderDetails = async (req, res) => {
         // Step 4: Inject factory info into each item
         const itemsWithFactory = order.items.map(item => {
             const factoryId = item.product?.content?.factory_id;
+            const updatedProduct = transformProducts(item.product)
             return {
                 ...item,
+                product: updatedProduct,
                 factory: factories[factoryId] || null,
             };
         });

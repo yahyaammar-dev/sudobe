@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { swell } = require('swell-node');
+const { transformProducts } = require('../helpers/functions');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
 // exports.searchProducts = async (req, res) => {
@@ -118,13 +119,27 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
             });
         }
 
+        const updatedGroupedResult = groupedResults?.map((obj)=>{
+            let updatedProducts = obj?.products?.map((item)=>{
+                return {
+                    ...item,
+                    sold_by: obj?.factory?.name 
+                }
+            })
+            updatedProducts =  transformProducts(updatedProducts)
+            return {
+                ...obj,
+                products: updatedProducts
+            }
+        })
+
         // Step 5: Return final result
         res.json({
             success: true,
             total: result.count,
             page: result.page,
             pages: result.pages,
-            groupedByFactory: groupedResults,
+            groupedByFactory: updatedGroupedResult,
         });
 
     } catch (err) {
@@ -167,6 +182,8 @@ exports.searchProductsByFactory = async (req, res) => {
 
         const products = productsResult?.results || [];
 
+
+
         // Step 3: Get all category IDs from all products
         const allCategoryIds = new Set();
         for (const product of products) {
@@ -201,7 +218,9 @@ exports.searchProductsByFactory = async (req, res) => {
                 groupedByCategory[categoryName] = [];
             }
 
-            groupedByCategory[categoryName].push(product);
+            const updatedProduct = transformProducts(product)
+
+            groupedByCategory[categoryName].push(updatedProduct);
         }
 
         // Step 6: Return final response
@@ -478,9 +497,11 @@ exports.getFeaturedProducts = async (req, res) => {
             };
         });
 
+        const transformedProducts =  transformProducts(enrichedProducts)
+
         return res.status(200).json({
             success: true,
-            products: enrichedProducts,
+            products: transformedProducts,
             pagination: {
                 currentPage: parsedPage,
                 perPage: parsedLimit,
@@ -497,9 +518,6 @@ exports.getFeaturedProducts = async (req, res) => {
         });
     }
 };
-
-
-
 
 
 
@@ -570,9 +588,10 @@ exports.getProductDetails = async (req, res) => {
             }
         };
 
+
         return res.status(200).json({
             success: true,
-            product: enrichedProduct,
+            product: transformProducts(enrichedProduct),
         });
 
     } catch (error) {
