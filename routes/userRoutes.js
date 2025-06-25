@@ -11,7 +11,7 @@ router.post('/verify-otp', userController.verifyOtp)
 router.post('/create-user', userController.createUser)
 router.put('/:id/certifications', uploadCertifications, updateUserWithCertifications);
 router.put('/:id/personal_id', uploadCertifications, userController.updateUserWithPersonalid);
-
+router.get('/debug-template', userController.debugContentTemplate);
 
 module.exports = router;
 

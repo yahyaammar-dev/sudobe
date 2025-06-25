@@ -53,10 +53,16 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
             sort,
             fields,
             expand,
+            locale
         } = req.query;
 
+        let localeFromParam = locale
+        if(!localeFromParam){
+            localeFromParam = 'en-US'
+        }
+
         // Step 1: Search products with the given query
-        const result = await swell.get('/products', {
+        const result = await swell.get(`/products?$locale=${localeFromParam}`, {
             search: q || undefined,
             where: {
                 'content.factory_id': { $ne: null } // only include products with factory
@@ -151,7 +157,7 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
 
 
 exports.searchProductsByFactory = async (req, res) => {
-    const { factoryId, accountId } = req.params;
+    const { factoryId, accountId, locale } = req.params;
 
     try {
         // Step 1: Fetch factory account
@@ -173,7 +179,7 @@ exports.searchProductsByFactory = async (req, res) => {
 
 
         // Step 2: Fetch products related to this factory
-        const productsResult = await swell.get('/products', {
+        const productsResult = await swell.get(`/products?locale=${locale}`, {
             where: {
                 'content.factory_id': factoryId,
             },
@@ -417,7 +423,7 @@ exports.getFactories = async (req, res) => {
 
 exports.getFeaturedProducts = async (req, res) => {
     try {
-        const { account, page = 1, limit = 20 } = req.query;
+        const { account, page = 1, limit = 20, locale } = req.query;
 
         if (!account) {
             return res.status(400).json({
@@ -432,7 +438,7 @@ exports.getFeaturedProducts = async (req, res) => {
         // Fetch promotions, featured products, and account favorites in parallel
         const [promotionsResponse, productsResponse, accountResponse] = await Promise.all([
             swell.get('/promotions', { where: { active: true } }),
-            swell.get('/products', {
+            swell.get(`/products?$locale=${locale}`, {
                 where: {
                     'content.featured': true
                 },
@@ -497,11 +503,11 @@ exports.getFeaturedProducts = async (req, res) => {
             };
         });
 
-        const transformedProducts =  transformProducts(enrichedProducts)
+        // const transformedProducts =  transformProducts(enrichedProducts)
 
         return res.status(200).json({
             success: true,
-            products: transformedProducts,
+            products: enrichedProducts,
             pagination: {
                 currentPage: parsedPage,
                 perPage: parsedLimit,
@@ -524,7 +530,7 @@ exports.getFeaturedProducts = async (req, res) => {
 exports.getProductDetails = async (req, res) => {
     try {
         const productId = req.params.id;
-        const { account } = req.query;
+        const { account, locale } = req.query;
 
         if (!productId) {
             return res.status(400).json({
@@ -534,7 +540,7 @@ exports.getProductDetails = async (req, res) => {
         }
 
         const [productResponse, promotionsResponse, accountResponse] = await Promise.all([
-            swell.get(`/products/${productId}`),
+            swell.get(`/products/${productId}?$locale=${locale}`),
             swell.get('/promotions', { where: { active: true } }),
             account ? swell.get(`/accounts/${account}`, { fields: ['metadata.favorites'] }) : Promise.resolve({})
         ]);

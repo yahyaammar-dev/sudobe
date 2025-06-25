@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload Order Documents</title>
+</head>
+<body>
+  <h2>Upload Order Documents</h2>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <div>
+      <label>Shipping Quotation:</label>
+      <input type="file" name="shipping_qutation" />
+    </div>
+    <div>
+      <label>Factory Invoice:</label>
+      <input type="file" name="invoice_by_factory" />
+    </div>
+    <div>
+      <label>DHL Invoice:</label>
+      <input type="file" name="dhl_invoice" />
+    </div>
+    <div>
+      <label>Inspection Report:</label>
+      <input type="file" name="inspection_report" />
+    </div>
+    <div>
+      <label>Shipping Policy:</label>
+      <input type="file" name="shipping_policy" />
+    </div>
+    <br />
+    <button type="submit">Upload</button>
+  </form>
+
+  <pre id="response" style="white-space: pre-wrap; margin-top: 1rem;"></pre>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const responseDiv = document.getElementById('response');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+
+      try {
+        const res = await fetch('http://localhost:5000/api/checkout/update-order-documents/682eb21254a8350012558838', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        responseDiv.innerText = JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error(err);
+        responseDiv.innerText = 'Error uploading files.';
+      }
+    });
+  </script>
+</body>
+</html>

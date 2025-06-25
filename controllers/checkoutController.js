@@ -4,6 +4,8 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 const { swell } = require('swell-node');
 const { transformProducts } = require('../helpers/functions');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 exports.updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
@@ -110,7 +112,7 @@ exports.getOrderDetails = async (req, res) => {
     try {
         // Step 1: Fetch order with product details
         const order = await swell.get(`/orders/${orderId}`, {
-            expand: ['items.product'],
+            expand: ['items.product', 'content.shipping_company_name'],
         });
 
         // Step 2: Extract unique factory_ids (customer IDs)
@@ -141,17 +143,27 @@ exports.getOrderDetails = async (req, res) => {
             return {
                 ...item,
                 product: updatedProduct,
-                factory: factories[factoryId] || null,
+                // factory: factories[factoryId] || null,
             };
         });
 
+        const firstFactoryId = factoryIds[0];
+        const firstFactory = factories[firstFactoryId] || null;
         // Final response with factories included
+        order.shipping.company_name = order?.content?.shipping_company_name?.first_name + order?.content?.shipping_company_name?.last_name
+        order.shipping.company_logo = order?.content?.shipping_company_name?.content?.store_front_cover_photo?.file?.url
+        order.shipping.shipping_date = order?.content?.date_of_shipping
+        order.shipping.duration = Math.ceil((new Date(order?.content?.delivery_date) - new Date(order?.content?.date_of_shipping)) / 86400000) + ' days';
+        order.shipping.currency = 'USD'
+
+
         return res.status(200).json({
             success: true,
             message: 'Order retrieved successfully',
             order: {
                 ...order,
                 items: itemsWithFactory,
+                factory: firstFactory
             },
         });
     } catch (err) {
@@ -159,6 +171,80 @@ exports.getOrderDetails = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to retrieve order',
+        });
+    }
+};
+
+
+
+exports.updateOrderDocuments = async (req, res) => {
+    const { orderId } = req.params;
+
+    if (!orderId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing order ID',
+        });
+    }
+
+    try {
+        // Get the existing order
+        const order = await swell.get(`/orders/${orderId}`);
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        const previousDocs = order.content || {};
+        const updatedDocs = { ...previousDocs };
+
+        const fileFields = [
+            'shipping_qutation',
+            'invoice_by_factory',
+            'dhl_invoice',
+            'inspection_report',
+            'shipping_policy',
+        ];
+
+        for (const field of fileFields) {
+            const file = req.files?.[field]?.[0];
+            if (!file?.buffer) continue;
+
+            try {
+                const uploaded = await swell.post('/:files', {
+                    filename: file.originalname,
+                    content_type: file.mimetype,
+                    data: {
+                        $base64: file.buffer.toString('base64'),
+                    },
+                });
+
+                const ext = file.originalname.split('.').pop();
+
+                updatedDocs[field] = {
+                    ...uploaded,
+                    originalFilename: file.originalname,
+                    extension: ext,
+                    mimeType: file.mimetype,
+                };
+            } catch (err) {
+                console.error(`Error uploading ${field}:`, err.message);
+            }
+        }
+
+        const updatedOrder = await swell.put(`/orders/${orderId}`, {
+            content: updatedDocs,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Order documents uploaded and updated successfully',
+            order: updatedOrder,
+        });
+    } catch (err) {
+        console.error('Error updating order documents:', err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
         });
     }
 };

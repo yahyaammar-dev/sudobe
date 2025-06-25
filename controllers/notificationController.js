@@ -11,40 +11,36 @@ admin.initializeApp({
 });
 
 
+
 exports.storeToken = async (req, res) => {
     try {
+        const { accountId } = req.params; // Get accountId from URL
         const { fcm_token } = req.body;
 
-        // Find customer account by phone number
-        const result = await swell.get('/accounts', {
-            where: { fcm_token: fcm_token }
-        });
-
-        if (result.count === 0) {
-            return res.status(404).json({
+        if (!accountId || !fcm_token) {
+            return res.status(400).json({
                 success: false,
-                message: 'User not found'
+                message: 'Missing accountId or fcm_token'
             });
         }
 
-        const customer = result.results[0];
-
-
-        await swell.put(`/accounts/${customer.id}`, {
-            content: {
-                ...customer.content,
-                fcm_token: fcm_token
-            }
+        // Update the account directly (no need to fetch first)
+        await swell.put(`/accounts/${accountId}`, {
+            fcm_token: fcm_token // Update FCM token directly
         });
 
         return res.status(200).json({
-            status: true,
-            message: 'FCM token updated successfully'
+            success: true,
+            message: 'FCM token stored successfully'
         });
 
     } catch (err) {
-        console.error('Failed to send WhatsApp message:', err.message);
-        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        console.error('Error storing FCM token:', err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to store token',
+            error: err.message
+        });
     }
 };
 

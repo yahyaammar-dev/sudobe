@@ -28,11 +28,13 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
     const customer = result.results[0];
     const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
 
-    // Send OTP via WhatsApp
     const message = await client.messages.create({
       from: process.env.TWILIO_WHATSAPP_FROM,
       to: `whatsapp:${toPhoneNumber}`,
-      body: `Your OTP is: ${otp}`,
+      contentSid: 'HX9a310952405007ecb86ef08f61273cbc',
+      contentVariables: JSON.stringify({
+        "1": otp.toString()  // ✅ must be string
+      }),
     });
 
     // Store OTP in the customer's content
@@ -371,5 +373,144 @@ exports.updateUserWithPersonalid = async (req, res) => {
   } catch (err) {
     console.error('Error updating Personal Id:', err.message);
     return res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Debug function to inspect your Content Template
+exports.debugContentTemplate = async (req, res) => {
+  try {
+    const contentSid = 'HX9a310952405007ecb86ef08f61273cbc';
+
+    // Fetch template details
+    const content = await client.content.v1.contents(contentSid).fetch();
+
+    console.log('Content Template Details:');
+    console.log('SID:', content.sid);
+    console.log('Friendly Name:', content.friendlyName);
+    console.log('Variables:', content.variables);
+    console.log('Types:', content.types);
+
+    return res.status(200).json({
+      success: true,
+      template: {
+        sid: content.sid,
+        friendlyName: content.friendlyName,
+        variables: content.variables,
+        types: content.types
+      }
+    });
+
+  } catch (err) {
+    console.error('Failed to fetch template:', err);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
+// Simplified version - try this first
+exports.sendOtpViaWhatsAppSimple = async (req, res) => {
+  try {
+    const { toPhoneNumber } = req.body;
+
+    if (!toPhoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    const cleanPhoneNumber = toPhoneNumber.replace('whatsapp:', '');
+
+    // Find customer account by phone number
+    const result = await swell.get('/accounts', {
+      where: { phone: cleanPhoneNumber }
+    });
+
+    if (result.count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const customer = result.results[0];
+    const otp = Math.floor(1000 + Math.random() * 9000);
+
+    // Try the most common variable patterns
+    const variablePatterns = [
+      { '1': otp.toString() },
+      { 1: otp.toString() },
+      { authCode: otp.toString() },
+      { code: otp.toString() },
+      { otp: otp.toString() },
+      { verification_code: otp.toString() }
+    ];
+
+    let message = null;
+    let lastError = null;
+
+    for (let i = 0; i < variablePatterns.length; i++) {
+      try {
+        console.log(`Trying pattern ${i + 1}:`, variablePatterns[i]);
+
+        message = await client.messages.create({
+          from: process.env.TWILIO_WHATSAPP_FROM,
+          to: `whatsapp:${cleanPhoneNumber}`,
+          contentSid: 'HX9a310952405007ecb86ef08f61273cbc',
+          contentVariables: variablePatterns[i]
+        });
+
+        console.log('Success with pattern:', variablePatterns[i]);
+        break;
+
+      } catch (err) {
+        console.log(`Pattern ${i + 1} failed:`, err.message);
+        lastError = err;
+        continue;
+      }
+    }
+
+    if (!message) {
+      throw new Error(`All variable patterns failed. Last error: ${lastError.message}`);
+    }
+
+    // Store OTP in the customer's content
+    await swell.put(`/accounts/${customer.id}`, {
+      content: {
+        ...customer.content,
+        otp: otp,
+        otpTimestamp: Date.now()
+      }
+    });
+
+    return res.status(200).json({
+      status: true,
+      sid: message.sid,
+      email: customer.email
+    });
+
+  } catch (err) {
+    console.error('Failed to send WhatsApp message:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP',
+      error: err.message
+    });
   }
 };

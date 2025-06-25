@@ -6,13 +6,14 @@ const checkoutRoutes = require('./routes/checkoutRoutes');
 const accountsController = require('./routes/accountsRoutes');
 const contactRoutes = require('./routes/contact');
 const webhookRoutes = require('./routes/webhookRoutes');
+const bannerRoutes = require('./routes/bannerRoutes');
 
 const app = express();
 
-// Allow all origins
-app.use(cors()); // <--- Add this line
+app.use(cors()); 
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); 
 
 app.use('/api/users', userRoutes);
 app.use('/api/catalogue', catalogueRoutes);
@@ -20,6 +21,7 @@ app.use('/api/checkout', checkoutRoutes);
 app.use('/api/account', accountsController);
 app.use('/api/contact', contactRoutes);
 app.use('/webhook', webhookRoutes);
+app.use('/api/content', bannerRoutes);
 
 app.get('/', async (req, res) => {
   console.log("why are you hitting /")

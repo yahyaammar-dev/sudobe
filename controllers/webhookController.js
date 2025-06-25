@@ -29,12 +29,17 @@ exports.sendNotifications = async (req, res) => {
     // Define the recipient (replace with actual logic or mapping)
     const toPhoneNumber = 'whatsapp:+923274509327'; // ✅ Replace with dynamic logic if needed
 
-    // Send WhatsApp message
+
     const message = await client.messages.create({
       from: process.env.TWILIO_WHATSAPP_FROM,
       to: toPhoneNumber,
-      body: `Order status updated: ${orderStatus}`,
+      contentSid: 'HX9ce2d09a37ace1174da161e00795d6d3',
+      contentVariables: JSON.stringify({
+        "1": orderStatus.toString()  // ✅ must be string
+      }),
     });
+
+
 
     console.log("✅ WhatsApp message sent:", message.sid);
 
