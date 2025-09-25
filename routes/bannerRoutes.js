@@ -1165,6 +1165,7 @@ router.get('/products/export', async (req, res) => {
       // Get main product data
       const mainRow = {
         'Main-UPC': product.content?.main_upc || product.id,
+        'ProductID': product.id, // Add the Swell product ID
         'ProductNameEN': product.content?.name_en || product.name || '',
         'ProductNameFR': product.content?.name_fr || '',
         'Price': product.price || 0,
@@ -1241,6 +1242,7 @@ router.get('/products/export', async (req, res) => {
     // Set column widths for better readability
     const columnWidths = [
       { wch: 15 }, // Main-UPC
+      { wch: 20 }, // ProductID (new column)
       { wch: 30 }, // ProductNameEN
       { wch: 30 }, // ProductNameFR
       { wch: 10 }, // Price
