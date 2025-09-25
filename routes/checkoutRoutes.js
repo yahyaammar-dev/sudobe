@@ -15,7 +15,8 @@ router.post(
         { name: 'invoice_by_factory' },
         { name: 'dhl_invoice' },
         { name: 'inspection_report' },
-        { name: 'shipping_policy' }
+        { name: 'shipping_policy' },
+        { name: 'other_documents' },
     ]),
     checkoutController.updateOrderDocuments
 );

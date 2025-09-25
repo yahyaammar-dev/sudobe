@@ -12,6 +12,6 @@ router.post('/create-user', userController.createUser)
 router.put('/:id/certifications', uploadCertifications, updateUserWithCertifications);
 router.put('/:id/personal_id', uploadCertifications, userController.updateUserWithPersonalid);
 router.get('/debug-template', userController.debugContentTemplate);
+router.post('/test', userController.test);
 
 module.exports = router;
-

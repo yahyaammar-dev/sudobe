@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify OTP - CMS Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .otp-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 30px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .otp-input {
+      font-size: 1.5rem;
+      text-align: center;
+      letter-spacing: 0.5rem;
+    }
+    .channel-info {
+      background-color: #e3f2fd;
+      border: 1px solid #90caf9;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .countdown {
+      font-weight: bold;
+      color: #dc3545;
+    }
+    .resend-section {
+      text-align: center;
+      margin-top: 20px;
+    }
+    #resendBtn {
+      background: none;
+      border: none;
+      color: #007bff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    #resendBtn:disabled {
+      color: #6c757d;
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="otp-container">
+    <div id="alert-container"></div>
+    
+    <h2 class="mb-4 text-center">Verify OTP</h2>
+    
+    <div class="channel-info" id="channelInfo">
+      <small class="text-muted">
+        <i class="bi bi-info-circle"></i>
+        OTP sent via <span id="channelType">WhatsApp</span>
+      </small>
+    </div>
+
+    <form method="POST" action="/api/auth/verify-otp" id="otpForm">
+      <input type="hidden" name="userId" id="userId" />
+      
+      <div class="mb-3">
+        <label for="otp" class="form-label">Enter 4-digit OTP</label>
+        <input 
+          type="text" 
+          name="otp" 
+          class="form-control otp-input" 
+          id="otp" 
+          maxlength="4" 
+          pattern="[0-9]{4}"
+          placeholder="----"
+          required 
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="mb-3 text-center">
+        <small class="text-muted">
+          OTP expires in: <span class="countdown" id="countdown">5:00</span>
+        </small>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100" id="verifyBtn">
+        Verify OTP
+      </button>
+    </form>
+
+    <div class="resend-section">
+      <small class="text-muted">
+        Didn't receive the code? 
+        <button type="button" id="resendBtn" disabled>
+          Resend OTP (<span id="resendCountdown">30</span>s)
+        </button>
+      </small>
+    </div>
+
+    <div class="text-center mt-3">
+      <a href="/auth.html" class="text-muted">Back to Login</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Get URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get('userId');
+    const channel = params.get('channel') || 'whatsapp';
+    const status = params.get('status');
+    const message = params.get('message');
+
+    // Set user ID in form
+    document.getElementById('userId').value = userId;
+
+    // Update channel info
+    document.getElementById('channelType').textContent = 
+      channel === 'sms' ? 'SMS' : 'WhatsApp';
+
+    // Show alert if present
+    if (status && message) {
+      const alertContainer = document.getElementById('alert-container');
+      const alertType = status === 'error' ? 'danger' : 'success';
+      alertContainer.innerHTML = `
+        <div class="alert alert-${alertType} alert-dismissible fade show" role="alert">
+          ${decodeURIComponent(message)}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      // Remove query params from URL without reload
+      history.replaceState({}, document.title, location.pathname);
+    }
+
+    // Redirect if no userId
+    if (!userId) {
+      window.location.href = '/auth.html?status=error&message=Session expired. Please login again';
+    }
+
+    // OTP input formatting
+    const otpInput = document.getElementById('otp');
+    otpInput.addEventListener('input', function(e) {
+      // Only allow numbers
+      this.value = this.value.replace(/[^0-9]/g, '');
+      
+      // Auto-submit when 4 digits entered
+      if (this.value.length === 4) {
+        setTimeout(() => {
+          document.getElementById('otpForm').submit();
+        }, 300);
+      }
+    });
+
+    // OTP expiry countdown (5 minutes)
+    let otpTimeLeft = 5 * 60; // 5 minutes in seconds
+    const countdownElement = document.getElementById('countdown');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const otpForm = document.getElementById('otpForm');
+
+    const otpCountdownTimer = setInterval(() => {
+      const minutes = Math.floor(otpTimeLeft / 60);
+      const seconds = otpTimeLeft % 60;
+      countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      if (otpTimeLeft <= 0) {
+        clearInterval(otpCountdownTimer);
+        countdownElement.textContent = 'Expired';
+        verifyBtn.disabled = true;
+        otpInput.disabled = true;
+        
+        // Show expiry message
+        const alertContainer = document.getElementById('alert-container');
+        alertContainer.innerHTML = `
+          <div class="alert alert-danger" role="alert">
+            OTP has expired. Please <a href="/auth.html">login again</a> to get a new code.
+          </div>
+        `;
+      }
+      
+      otpTimeLeft--;
+    }, 1000);
+
+    // Resend OTP functionality
+    let resendTimeLeft = 30; // 30 seconds cooldown
+    const resendBtn = document.getElementById('resendBtn');
+    const resendCountdown = document.getElementById('resendCountdown');
+
+    const resendCountdownTimer = setInterval(() => {
+      if (resendTimeLeft <= 0) {
+        clearInterval(resendCountdownTimer);
+        resendBtn.disabled = false;
+        resendBtn.innerHTML = 'Resend OTP';
+      } else {
+        resendCountdown.textContent = resendTimeLeft;
+        resendTimeLeft--;
+      }
+    }, 1000);
+
+    // Resend OTP handler
+    resendBtn.addEventListener('click', async function() {
+      if (this.disabled) return;
+      
+      this.disabled = true;
+      this.innerHTML = 'Sending...';
+      
+      try {
+        const response = await fetch('/api/auth/resend-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: userId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Update channel info
+          document.getElementById('channelType').textContent = 
+            result.channel === 'sms' ? 'SMS' : 'WhatsApp';
+          
+          // Show success message
+          const alertContainer = document.getElementById('alert-container');
+          alertContainer.innerHTML = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              New OTP sent successfully via ${result.channel === 'sms' ? 'SMS' : 'WhatsApp'}!
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          
+          // Reset OTP timer
+          otpTimeLeft = 5 * 60;
+          verifyBtn.disabled = false;
+          otpInput.disabled = false;
+          otpInput.value = '';
+          otpInput.focus();
+          
+          // Reset resend cooldown
+          resendTimeLeft = 30;
+          this.innerHTML = 'Resend OTP (<span id="resendCountdown">30</span>s)';
+          
+          // Restart resend countdown
+          const newResendCountdown = document.getElementById('resendCountdown');
+          const newResendTimer = setInterval(() => {
+            if (resendTimeLeft <= 0) {
+              clearInterval(newResendTimer);
+              this.disabled = false;
+              this.innerHTML = 'Resend OTP';
+            } else {
+              newResendCountdown.textContent = resendTimeLeft;
+              resendTimeLeft--;
+            }
+          }, 1000);
+          
+        } else {
+          throw new Error(result.message);
+        }
+        
+      } catch (error) {
+        console.error('Resend error:', error);
+        const alertContainer = document.getElementById('alert-container');
+        alertContainer.innerHTML = `
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            Failed to resend OTP. Please try again.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        `;
+        this.disabled = false;
+        this.innerHTML = 'Resend OTP';
+      }
+    });
+
+    // Focus on OTP input when page loads
+    otpInput.focus();
+  </script>
+</body>
+</html>

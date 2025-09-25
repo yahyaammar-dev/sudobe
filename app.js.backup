@@ -1,0 +1,41 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const multer = require('multer');
+const path = require('path');
+
+const app = express();
+
+// Configure multer for handling multipart/form-data
+const upload = multer();
+
+// Middleware
+app.use(cors());
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// Remove the global multer middleware - it conflicts with route-specific multer
+// app.use(upload.any());
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/api/content', require('./routes/imageRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/content', require('./routes/bannerRoutes'));
+app.use('/api/content', require('./routes/catalogueRoutes'));
+app.use('/api/content', require('./routes/checkoutRoutes'));
+app.use('/api/content', require('./routes/userRoutes'));
+app.use('/api/content', require('./routes/webhookRoutes'));
+app.use('/api/content', require('./routes/accountsRoutes'));
+app.use('/api/content', require('./routes/notificationRoutes'));
+app.use('/api/content', require('./routes/contact'));
+
+// Default route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+module.exports = app;

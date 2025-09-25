@@ -57,7 +57,7 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
         } = req.query;
 
         let localeFromParam = locale
-        if(!localeFromParam){
+        if (!localeFromParam) {
             localeFromParam = 'en-US'
         }
 
@@ -125,14 +125,14 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
             });
         }
 
-        const updatedGroupedResult = groupedResults?.map((obj)=>{
-            let updatedProducts = obj?.products?.map((item)=>{
+        const updatedGroupedResult = groupedResults?.map((obj) => {
+            let updatedProducts = obj?.products?.map((item) => {
                 return {
                     ...item,
-                    sold_by: obj?.factory?.name 
+                    sold_by: obj?.factory?.name
                 }
             })
-            updatedProducts =  transformProducts(updatedProducts)
+            updatedProducts = transformProducts(updatedProducts)
             return {
                 ...obj,
                 products: updatedProducts
@@ -274,8 +274,13 @@ exports.cancelOrder = async (req, res) => {
 
         // Cancel the order
         const cancelledOrder = await swell.put(`/orders/${orderId}`, {
-            canceled: true
+            canceled: true,
+            content: {
+                order_status: 'order_cancelled'
+            }
         });
+
+
 
         return res.status(200).json({
             success: true,
@@ -552,7 +557,6 @@ exports.getProductDetails = async (req, res) => {
                 message: 'Product not found',
             });
         }
-
         const favoriteIds = accountResponse?.metadata?.favorites || [];
 
         // Find discount for the specific product
@@ -582,7 +586,6 @@ exports.getProductDetails = async (req, res) => {
             const factoryResponse = await swell.get(`/accounts/${factoryId}`);
             factory = factoryResponse || null;
         }
-
         const enrichedProduct = {
             ...product,
             isFavorite: favoriteIds.includes(product.id),
@@ -607,4 +610,139 @@ exports.getProductDetails = async (req, res) => {
             message: 'Internal Server Error',
         });
     }
+};
+
+
+exports.getByCategory = async (req, res) => {
+    const categoryId = req.params.id;
+    const { page = 1, limit = 100, locale = 'en-US', account } = req.query;
+
+    if (!categoryId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing category ID',
+        });
+    }
+
+    try {
+        // Step 1: Get promotions
+        const promotionsResponse = await swell.get('/promotions', {
+            where: { active: true }
+        });
+
+        // Step 2: Fetch user (optional) for favorites
+        let favoriteIds = [];
+        if (account) {
+            const user = await swell.get(`/accounts/${account}`, {
+                fields: ['metadata.favorites']
+            });
+            favoriteIds = user?.metadata?.favorites || [];
+        }
+
+        // Step 3: Fetch products in the given category
+        const productsResponse = await swell.get(`/products?$locale=${locale}`, {
+            where: {
+                'category_index.id': categoryId,
+                active: true
+            },
+            limit: parseInt(limit),
+            page: parseInt(page),
+        });
+
+        const products = productsResponse.results || [];
+
+        // Step 4: Extract unique factory IDs
+        const factoryIds = [...new Set(products.map(p => p.content?.factory_id).filter(Boolean))];
+
+        // Step 5: Fetch factory info in bulk
+        const factoryMap = {};
+        if (factoryIds.length > 0) {
+            const factories = await swell.get('/accounts', {
+                where: { id: { $in: factoryIds } },
+                limit: factoryIds.length
+            });
+            for (const factory of factories.results || []) {
+                factoryMap[factory.id] = factory;
+            }
+        }
+
+        // Step 6: Map discounts
+        const discountMap = {};
+        for (const promo of promotionsResponse.results || []) {
+            for (const discount of promo.discounts || []) {
+                if (discount.type === 'product' && discount.value_type === 'percent') {
+                    discountMap[discount.product_id] = discount.value_percent;
+                }
+            }
+        }
+
+        // Step 7: Enrich products
+        const enrichedProducts = products.map(product => {
+            const discountPercent = discountMap[product.id] || 0;
+            const discountedPrice = discountPercent
+                ? +(product.price * (1 - discountPercent / 100)).toFixed(2)
+                : null;
+            const factoryId = product.content?.factory_id;
+            const factory = factoryMap[factoryId] || null;
+
+            const enriched = {
+                ...product,
+                isFavorite: favoriteIds.includes(product.id),
+                discount_percent: discountPercent,
+                discounted_price: discountedPrice,
+                content: {
+                    ...product.content,
+                    factory,
+                },
+            };
+
+            return enriched
+            // return transformProducts ? transformProducts(enriched) : enriched;
+        });
+
+
+        const sortParam = req.query.sort;
+
+        if (sortParam) {
+            enrichedProducts.sort((a, b) => {
+                switch (sortParam) {
+                    case 'a-z':
+                        return a.name.localeCompare(b.name);
+
+                    case 'lowest-moq':
+                        return (a.content?.minimum_quantity || Infinity) - (b.content?.minimum_quantity || Infinity);
+
+                    case 'shortest-lead-time':
+                        const aLead = a.content?.lead_time?.[0];
+                        const bLead = b.content?.lead_time?.[0];
+                        return (aLead?.min_days || Infinity) - (bLead?.min_days || Infinity);
+
+                    case 'lowest-price':
+                        const aPrice = a.discounted_price ?? a.price ?? Infinity;
+                        const bPrice = b.discounted_price ?? b.price ?? Infinity;
+                        return aPrice - bPrice;
+
+                    default:
+                        return 0; // No sorting if invalid sort key
+                }
+            });
+        }
+
+        // Step 8: Return response
+        return res.status(200).json({
+            success: true,
+            products: enrichedProducts,
+            total: productsResponse.count,
+            page: productsResponse.page,
+            pages: productsResponse.pages
+        });
+
+    } catch (error) {
+        console.error('Error in getByCategory:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal Server Error',
+        });
+    }
+
 };

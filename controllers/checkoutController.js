@@ -150,13 +150,53 @@ exports.getOrderDetails = async (req, res) => {
         const firstFactoryId = factoryIds[0];
         const firstFactory = factories[firstFactoryId] || null;
         // Final response with factories included
-        order.shipping.company_name = order?.content?.shipping_company_name?.first_name + order?.content?.shipping_company_name?.last_name
-        order.shipping.company_logo = order?.content?.shipping_company_name?.content?.store_front_cover_photo?.file?.url
-        order.shipping.shipping_date = order?.content?.date_of_shipping
-        order.shipping.duration = Math.ceil((new Date(order?.content?.delivery_date) - new Date(order?.content?.date_of_shipping)) / 86400000) + ' days';
-        order.shipping.currency = 'USD'
+        if (order?.content?.shipping_company_name?.first_name || order?.content?.shipping_company_name?.last_name) {
+            const firstName = order.content.shipping_company_name.first_name || '';
+            const lastName = order.content.shipping_company_name.last_name || '';
+            order.shipping.company_name = `${firstName} ${lastName}`.trim();
+        }
 
+        if (order?.content?.shipping_company_name?.content?.store_front_cover_photo?.file?.url) {
+            order.shipping.company_logo = order.content.shipping_company_name.content.store_front_cover_photo.file.url;
+        }
 
+        if (order?.content?.date_of_shipping) {
+            order.shipping.shipping_date = order.content.date_of_shipping;
+        }
+
+        if (order?.content?.delivery_date && order?.content?.date_of_shipping) {
+            const diff = new Date(order.content.delivery_date) - new Date(order.content.date_of_shipping);
+            const durationDays = Math.ceil(diff / 86400000);
+            order.shipping.duration = `${durationDays} days`;
+        }
+
+        if (order?.content?.price) {
+            order.shipping.price = order.content.price
+        }
+
+        order.shipping.currency = 'USD'; // This can always be set if it's fixed
+
+        if (order?.content?.order_status) {
+            order.status = order.content.order_status
+        } else {
+            order.status = 'order_placed'
+        }
+
+        // Handle other_documents field (ensure it's always an array)
+        if (order.content && order.content.other_documents) {
+            if (!Array.isArray(order.content.other_documents)) {
+                order.content.other_documents = [order.content.other_documents];
+            }
+
+            // Keep only url and originalFilename
+            order.content.other_documents = order.content.other_documents.map(doc => ({
+                url: doc.url,
+                originalFilename: doc.originalFilename
+            }));
+        } else {
+            order.content.other_documents = [];
+        }
+        
         return res.status(200).json({
             success: true,
             message: 'Order retrieved successfully',
@@ -174,7 +214,6 @@ exports.getOrderDetails = async (req, res) => {
         });
     }
 };
-
 
 
 exports.updateOrderDocuments = async (req, res) => {
@@ -203,8 +242,10 @@ exports.updateOrderDocuments = async (req, res) => {
             'dhl_invoice',
             'inspection_report',
             'shipping_policy',
+            'other_documents'
         ];
 
+        // Handle single file fields
         for (const field of fileFields) {
             const file = req.files?.[field]?.[0];
             if (!file?.buffer) continue;
@@ -228,6 +269,41 @@ exports.updateOrderDocuments = async (req, res) => {
                 };
             } catch (err) {
                 console.error(`Error uploading ${field}:`, err.message);
+            }
+        }
+
+        // Handle other_documents (multiple files)
+        const otherDocumentsFiles = req.files?.['other_documents'] || [];
+        if (otherDocumentsFiles.length > 0) {
+            // Initialize other_documents as array if it doesn't exist
+            if (!Array.isArray(updatedDocs.other_documents)) {
+                updatedDocs.other_documents = [];
+            }
+
+            for (const file of otherDocumentsFiles) {
+                if (!file?.buffer) continue;
+
+                try {
+                    const uploaded = await swell.post('/:files', {
+                        filename: file.originalname,
+                        content_type: file.mimetype,
+                        data: {
+                            $base64: file.buffer.toString('base64'),
+                        },
+                    });
+
+                    const ext = file.originalname.split('.').pop();
+
+                    updatedDocs.other_documents.push({
+                        ...uploaded,
+                        originalFilename: file.originalname,
+                        extension: ext,
+                        mimeType: file.mimetype,
+                        uploadedAt: new Date().toISOString(),
+                    });
+                } catch (err) {
+                    console.error('Error uploading other_document:', err.message);
+                }
             }
         }
 

@@ -1,30 +1,36 @@
+require('dotenv').config();
 const express = require('express');
-const cors = require('cors'); // <--- Add this line
-const userRoutes = require('./routes/userRoutes');
-const catalogueRoutes = require('./routes/catalogueRoutes');
-const checkoutRoutes = require('./routes/checkoutRoutes');
-const accountsController = require('./routes/accountsRoutes');
-const contactRoutes = require('./routes/contact');
-const webhookRoutes = require('./routes/webhookRoutes');
-const bannerRoutes = require('./routes/bannerRoutes');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const path = require('path');
 
 const app = express();
 
-app.use(cors()); 
-
+// Middleware
+app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/users', userRoutes);
-app.use('/api/catalogue', catalogueRoutes);
-app.use('/api/checkout', checkoutRoutes);
-app.use('/api/account', accountsController);
-app.use('/api/contact', contactRoutes);
-app.use('/webhook', webhookRoutes);
-app.use('/api/content', bannerRoutes);
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', async (req, res) => {
-  console.log("why are you hitting /")
+// Original API routes (for mobile app compatibility)
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/catalogue', require('./routes/catalogueRoutes'));
+app.use('/api/checkout', require('./routes/checkoutRoutes'));
+app.use('/api/account', require('./routes/accountsRoutes'));
+app.use('/api/contact', require('./routes/contact'));
+app.use('/webhook', require('./routes/webhookRoutes'));
+
+// New content management routes
+app.use('/api/content', require('./routes/bannerRoutes'));
+app.use('/api/content', require('./routes/imageRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+
+// Default route
+app.get('/', (req, res) => {
   res.send('API is running...');
 });
 

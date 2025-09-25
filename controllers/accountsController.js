@@ -23,6 +23,7 @@ exports.getOrdersByUserId = async (req, res) => {
             expand: ['items.product']
         });
 
+        console.log(orders)
 
         const updatedOrders = await Promise.all(orders.results.map(async (order) => {
             if (!Array.isArray(order.items) || order.items.length === 0) {
@@ -31,6 +32,14 @@ exports.getOrdersByUserId = async (req, res) => {
                     expected_delivery: null
                 };
             }
+
+
+            if (order?.content?.order_status) {
+                order.status = order.content.order_status
+            } else {
+                order.status = 'order_placed'
+            }
+
 
 
 

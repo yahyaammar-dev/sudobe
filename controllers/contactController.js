@@ -2,7 +2,6 @@ require('dotenv').config();
 const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
-
 /**
  * Stores a user's complaint message in their account content.complain array
  * @param {string} accountId - Swell account ID
@@ -11,6 +10,16 @@ swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 exports.submitContactMessage = async (req, res) => {
     try {
         const { accountId } = req.params;
+        
+        // Add better error handling for req.body
+        if (!req.body) {
+            console.error('Request body is undefined. Headers:', req.headers);
+            return res.status(400).json({
+                success: false,
+                message: 'Request body is missing or invalid. Please ensure Content-Type is application/json',
+            });
+        }
+        
         const { message } = req.body;
 
         if (!message || message.trim().length === 0) {
@@ -44,7 +53,7 @@ exports.submitContactMessage = async (req, res) => {
         await swell.put(`/accounts/${accountId}`, {
             content: {
                 ...account.content,
-                complain: message,
+                complain: updatedComplaints, // Use updatedComplaints instead of message
             },
         });
 

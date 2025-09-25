@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMS Login - 2FA Enabled</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 30px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .login-header h2 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .login-header p {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    .form-control:focus {
+      border-color: #80bdff;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    .btn-primary {
+      background-color: #007bff;
+      border-color: #007bff;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+      border-color: #004085;
+    }
+    .security-info {
+      background-color: #e8f4fd;
+      border: 1px solid #b8daff;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: #004085;
+    }
+    .loading {
+      display: none;
+    }
+    .btn-loading {
+      position: relative;
+    }
+    .btn-loading .spinner-border {
+      width: 1rem;
+      height: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div id="alert-container"></div>
+    
+    <div class="login-header">
+      <h2>CMS Login</h2>
+      <p>Secure access with two-factor authentication</p>
+    </div>
+
+    <div class="security-info">
+      <strong>🔐 2FA Protected</strong><br>
+      After login, you'll receive an OTP via WhatsApp or SMS to complete authentication.
+    </div>
+    
+    <form method="POST" action="/api/auth/login" id="loginForm">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email address</label>
+        <input 
+          type="email" 
+          name="email" 
+          class="form-control" 
+          id="email" 
+          required 
+          autocomplete="username"
+          placeholder="Enter your email"
+        />
+      </div>
+      
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          name="password" 
+          class="form-control" 
+          id="password" 
+          required 
+          autocomplete="current-password"
+          placeholder="Enter your password"
+        />
+      </div>
+      
+      <button type="submit" class="btn btn-primary w-100" id="loginBtn">
+        <span class="btn-text">Login & Send OTP</span>
+        <span class="loading">
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          Sending OTP...
+        </span>
+      </button>
+    </form>
+
+    <div class="text-center mt-4">
+      <small class="text-muted">
+        Having trouble? Contact your system administrator.
+      </small>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Handle URL parameters for status messages
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const message = params.get('message');
+    
+    if (status && message) {
+      const alertContainer = document.getElementById('alert-container');
+      const alertType = status === 'error' ? 'danger' : 'success';
+      alertContainer.innerHTML = `
+        <div class="alert alert-${alertType} alert-dismissible fade show" role="alert">
+          ${decodeURIComponent(message)}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+      // Remove query params from URL without reload
+      history.replaceState({}, document.title, location.pathname);
+    }
+
+    // Handle form submission with loading state
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const btnText = loginBtn.querySelector('.btn-text');
+    const loadingText = loginBtn.querySelector('.loading');
+
+    loginForm.addEventListener('submit', function(e) {
+      // Show loading state
+      loginBtn.disabled = true;
+      btnText.style.display = 'none';
+      loadingText.style.display = 'inline';
+      
+      // Form will submit normally, no need to prevent default
+    });
+
+    // Auto-focus on email field
+    document.getElementById('email').focus();
+
+    // Basic form validation
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
+    function validateForm() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+      
+      const isValid = email && password && email.includes('@');
+      loginBtn.disabled = !isValid;
+      
+      return isValid;
+    }
+
+    emailInput.addEventListener('input', validateForm);
+    passwordInput.addEventListener('input', validateForm);
+
+    // Initial validation
+    validateForm();
+
+    // Handle potential network errors
+    window.addEventListener('beforeunload', function() {
+      if (loginBtn.disabled && loadingText.style.display === 'inline') {
+        // Reset button state if page is being refreshed/navigated away
+        loginBtn.disabled = false;
+        btnText.style.display = 'inline';
+        loadingText.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 30px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-container">
+    <div id="alert-container"></div>
+
+    <h2 class="mb-4 text-center">Login</h2>
+    <form method="POST" action="/api/auth/login">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email address</label>
+        <input type="email" name="email" class="form-control" id="email" required />
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" id="password" required />
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Login</button>
+    </form>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const message = params.get('message');
+
+    if (status && message) {
+      const alertContainer = document.getElementById('alert-container');
+      const alertType = status === 'error' ? 'danger' : 'success';
+
+      alertContainer.innerHTML = `
+        <div class="alert alert-${alertType} alert-dismissible fade show" role="alert">
+          ${decodeURIComponent(message)}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      `;
+
+      // Remove query params from URL without reload
+      history.replaceState({}, document.title, location.pathname);
+    }
+  </script>
+
+</body>
+
+</html> -->
