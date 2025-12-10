@@ -1,0 +1,2558 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sodu Loading‑Day QC Report Template (50‑Point Checklist)</title>
+  <meta name="description" content="Fillable, mobile-friendly QC report template with a 50-point loading-day checklist for factory/container inspections." />
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#121821;
+      --muted:#96a1b2;
+      --text:#e9eef6;
+      --accent:#4cc2ff;
+      --accent-2:#7ef0d4;
+      --warn:#ffb020;
+      --danger:#ff6b6b;
+      --ok:#3ddc97;
+      --line:#223040;
+      --chip:#1b2432;
+      --focus:#7ef0d480;
+    }
+    /* Reset/typography */
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:linear-gradient(180deg,#091019,#0b121c 40%,#0a1320);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    a{color:var(--accent)}
+    h1,h2,h3{line-height:1.2;margin:0 0 .6rem}
+    h1{font-size:1.6rem}
+    h2{font-size:1.2rem;color:#cfe7ff}
+    h3{font-size:1.05rem;color:#cae9e1}
+    p{margin:.4rem 0;color:#d6deea}
+    small, .muted{color:var(--muted)}
+    label{display:block;font-weight:600;margin:.65rem 0 .35rem}
+    input[type="text"], input[type="datetime-local"], input[type="number"], textarea, select{
+      width:100%;background:#0f1622;border:1px solid var(--line);color:var(--text);
+      border-radius:.55rem;padding:.65rem .75rem;outline:none;transition:.2s;
+    }
+    input[type="date"]:disabled, input[type="date"][readonly]{
+      background:#0a0f15;color:var(--muted);cursor:not-allowed;opacity:.7
+    }
+    textarea{min-height:110px;resize:vertical;overflow-y:hidden}
+    input:focus, textarea:focus, select:focus{border-color:var(--accent);box-shadow:0 0 0 .2rem var(--focus)}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    .card{
+      background:radial-gradient(1200px 600px at 110% -10%, rgba(76,194,255,.08), transparent 30%),
+                 radial-gradient(900px 600px at -10% 110%, rgba(126,240,212,.08), transparent 35%),
+                 linear-gradient(180deg, rgba(255,255,255,.02), transparent 20%),
+                 var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+      margin:12px 0;
+    }
+    .grid{display:grid;gap:12px}
+    @media (min-width:720px){ .grid.cols-2{grid-template-columns:1fr 1fr} .grid.cols-3{grid-template-columns:repeat(3,1fr)} }
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--chip);border:1px solid var(--line);
+      color:#cfe7ff;padding:.25rem .6rem;border-radius:999px;font-size:.85rem}
+    .btn{
+      appearance:none;border:1px solid var(--line);background:linear-gradient(180deg,#18212d,#121a25);
+      color:var(--text);padding:.6rem .9rem;border-radius:.6rem;cursor:pointer;
+      box-shadow:0 2px 0 rgba(0,0,0,.25);transition:.15s;font-weight:600
+    }
+    .btn:hover{border-color:#2b3b52;transform:translateY(-1px)}
+    .btn.accent{background:linear-gradient(180deg,#23b5ff,#0da2ee);border-color:#0999e3;color:#071521}
+    .btn.ghost{background:transparent}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .status-select{display:flex;gap:6px;flex-wrap:wrap;margin:.35rem 0}
+    .status-select select{max-width:220px}
+    .tag{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .5rem;border-radius:.5rem;border:1px solid var(--line);background:#0f1622;font-size:.8rem}
+    .tag.ok{color:#bff7e6;border-color:#245d4e;background:#0d221d}
+    .tag.warn{color:#ffe1a6;border-color:#5b4a1d;background:#1e1a10}
+    .tag.danger{color:#ffd1d1;border-color:#5a2727;background:#241214}
+    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0f1622}
+    thead th{position:sticky;top:0;background:linear-gradient(180deg,#152234,#0f1622);text-align:left;padding:.6rem;border-bottom:1px solid var(--line);font-size:.9rem}
+    tbody td{padding:.5rem;border-bottom:1px solid #1a2433;vertical-align:top}
+    tbody tr:hover{background:#111a27}
+    .table-small td, .table-small th{font-size:.9rem}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .section-kicker{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+    .k-dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+    .help{font-size:.85rem;color:var(--muted)}
+    .divider{height:1px;background:linear-gradient(90deg,transparent,#233445,transparent);margin:12px 0}
+    .sticky-actions{position:sticky;bottom:0;z-index:10;background:linear-gradient(180deg,transparent,rgba(9,16,25,.75) 30%, rgba(9,16,25,.9));padding-top:6px}
+    .flex-end{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .sr-only{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+    .save-status{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--muted)}
+    .save-status.saving{color:var(--warn)}
+    .save-status.saved{color:var(--ok)}
+    .save-status.error{color:var(--danger)}
+    .reports-list{display:none;margin-bottom:16px}
+    .reports-list.active{display:block}
+    .report-item{display:flex;justify-content:space-between;align-items:center;padding:.75rem;background:#0f1622;border:1px solid var(--line);border-radius:.6rem;margin-bottom:.5rem;cursor:pointer;transition:.15s}
+    .report-item:hover{background:#111a27;border-color:var(--accent)}
+    .report-item-info{flex:1}
+    .report-item-meta{display:flex;gap:.75rem;font-size:.85rem;color:var(--muted)}
+    .report-item-actions{display:flex;gap:.5rem}
+    .photo-upload-wrapper{position:relative}
+    .photo-upload-wrapper input[type="file"]{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;z-index:2}
+    .photo-upload-btn{display:flex;align-items:center;gap:.5rem;padding:.5rem;background:#0f1622;border:1px dashed var(--line);border-radius:.5rem;cursor:pointer;transition:.2s;min-height:2.5rem}
+    .photo-upload-btn:hover{border-color:var(--accent);background:#111a27}
+    .photo-upload-btn.has-image{border-style:solid;border-color:var(--ok)}
+    .photo-preview{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
+    .photo-preview-item{position:relative;width:200px;height:200px;border-radius:.5rem;overflow:hidden;border:1px solid var(--line)}
+    .photo-preview-item img{width:100%;height:100%;object-fit:cover}
+    .photo-preview-item .remove{position:absolute;top:2px;right:2px;background:var(--danger);color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+    .tag-input-wrapper{width:100%}
+    .tag-input-container{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;background:#0f1622;border:1px solid var(--line);border-radius:.55rem;padding:.5rem;min-height:2.5rem}
+    .tag-input-container:focus-within{border-color:var(--accent);box-shadow:0 0 0 .2rem var(--focus)}
+    .tag-input-container .product-tag{display:inline-flex;align-items:center;gap:.4rem;background:var(--chip);border:1px solid var(--line);color:#cfe7ff;padding:.35rem .6rem;border-radius:.4rem;font-size:.85rem}
+    .tag-input-container .product-tag .tag-remove{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;transition:.15s}
+    .tag-input-container .product-tag .tag-remove:hover{color:var(--danger)}
+    .tag-input-container #products{flex:1;min-width:150px;background:transparent;border:none;padding:.25rem;outline:none;color:var(--text)}
+    .tag-input-container #products::placeholder{color:var(--muted)}
+    /* mobile tweaks */
+    @media (max-width:520px){
+      h1{font-size:1.25rem}
+      .card{padding:12px}
+      thead th:nth-child(2){min-width:220px}
+      .hide-sm{display:none}
+      .toolbar{flex-direction:column;width:100%}
+      .toolbar .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Reports List View -->
+    <section class="card reports-list" id="reportsList">
+      <div class="section-kicker"><span class="k-dot"></span><h2>QC Reports</h2></div>
+      <div id="reportsListContent">
+        <p class="help">Loading reports...</p>
+      </div>
+    </section>
+
+    <header class="card" role="banner">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <div>
+          <h1>Sodu Loading‑Day Quality Control (QC) Report</h1>
+          <div class="row" style="gap:6px;align-items:center">
+            <span class="save-status" id="saveStatus"></span>
+            <span class="save-status" id="pdfStatus" style="display:none"></span>
+            <input type="hidden" id="currentReportId">
+          </div>
+        </div>
+        <div class="toolbar">
+          <a href="/api/content" class="btn ghost" title="Back to Admin Panel" style="text-decoration:none;color:inherit">← Admin</a>
+          <button class="btn ghost" id="btnList" title="View all reports">Reports List</button>
+          <button class="btn ghost" id="btnNew" title="Create new report">New Report</button>
+          <button class="btn accent" id="btnSave" title="Save report">Save</button>
+          <button class="btn ghost" id="btnPrint" title="Print or save to PDF">Print / Save PDF</button>
+          <button class="btn ghost" id="btnExport" title="Download JSON of this report">Export JSON</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cover -->
+    <section class="card" aria-labelledby="cover-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="cover-title">1) Cover</h2></div>
+      <div class="grid cols-3">
+        <div>
+          <label for="customer">Customer</label>
+          <input id="customer" type="text" placeholder="Enter customer name">
+        </div>
+        <div>
+          <label for="po">PO Number</label>
+          <input id="po" type="text" placeholder="PO‑000123">
+        </div>
+        <div>
+          <label for="factory">Factory</label>
+          <input id="factory" type="text" placeholder="Factory name">
+        </div>
+        <div>
+          <label for="products">Product(s)</label>
+          <div class="tag-input-wrapper">
+            <div class="tag-input-container" id="productsContainer">
+              <input id="products" type="text" placeholder="Enter product names, press comma to add">
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="containers">Container No(s).</label>
+          <input id="containers" type="text" placeholder="e.g., TGHU1234567; TGHU9876543">
+        </div>
+        <div>
+          <label for="seals">Seal No(s).</label>
+          <input id="seals" type="text" placeholder="Enter all seal numbers">
+        </div>
+        <div>
+          <label for="incoterms">Incoterms</label>
+          <select id="incoterms">
+            <option value="">Select…</option>
+            <option>EXW</option><option>FCA</option><option>FOB</option>
+            <option>CFR</option><option>CIF</option><option>DAP</option><option>DDP</option>
+          </select>
+        </div>
+        <div>
+          <label for="loadDate">Load Date & Time</label>
+          <input id="loadDate" type="datetime-local">
+        </div>
+        <div>
+          <label for="inspector">Inspector Name/Contact</label>
+          <input id="inspector" type="text" placeholder="Name | phone | email">
+        </div>
+        <div>
+          <label for="weather">Weather/Temperature</label>
+          <input id="weather" type="text" placeholder="Clear, 28°C">
+        </div>
+        <div>
+          <label for="location">Location</label>
+          <input id="location" type="text" placeholder="Factory address / Loading site">
+        </div>
+        <div>
+          <label for="photoLink">Photo Log Link (Drive)</label>
+          <input id="photoLink" type="text" placeholder="https://drive.google.com/…">
+        </div>
+      </div>
+    </section>
+
+    <!-- Executive Summary -->
+    <section class="card" aria-labelledby="exec-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="exec-title">2) Executive Summary</h2></div>
+      <div class="grid cols-3">
+        <div>
+          <label for="overallStatus">Overall Status</label>
+          <select id="overallStatus">
+            <option value="">Select…</option>
+            <option>Pass</option>
+            <option>Conditional Pass</option>
+            <option>Fail</option>
+          </select>
+        </div>
+        <div>
+          <label for="decisionNeeded">Customer Decision Required?</label>
+          <select id="decisionNeeded">
+            <option value="">Select…</option>
+            <option>No</option>
+            <option>Yes</option>
+          </select>
+        </div>
+        <div>
+          <label for="shipmentId">Shipment ID</label>
+          <input id="shipmentId" type="text" placeholder="Auto/Manual">
+        </div>
+      </div>
+      <label for="majorIssues">Key Findings — Major issues</label>
+      <textarea id="majorIssues" placeholder="List critical items that impact safety/compliance or shipment release."></textarea>
+      <label for="minorIssues">Key Findings — Minor issues</label>
+      <textarea id="minorIssues" placeholder="Non-critical deviations to monitor or rework."></textarea>
+      <label for="actionsTaken">Actions Taken</label>
+      <textarea id="actionsTaken" placeholder="Rework, relabel, re-pack, replacements, segregation, etc."></textarea>
+    </section>
+
+    <!-- Documents Reviewed -->
+    <section class="card" aria-labelledby="docs-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="docs-title">3) Documents Reviewed</h2></div>
+      <div class="grid cols-3">
+        <label class="tag"><input type="checkbox" id="doc-po"> Purchase Order</label>
+        <label class="tag"><input type="checkbox" id="doc-inv"> Commercial Invoice</label>
+        <label class="tag"><input type="checkbox" id="doc-pack"> Packing List</label>
+        <label class="tag"><input type="checkbox" id="doc-art"> Approved Artwork/Label Specs</label>
+        <label class="tag"><input type="checkbox" id="doc-pallet"> Palletization/Layout Spec</label>
+        <label class="tag"><input type="checkbox" id="doc-reg"> Regulatory Approvals</label>
+        <label class="tag"><input type="checkbox" id="doc-other"> Others</label>
+      </div>
+      <div id="otherDocsWrap" style="display:none;margin-top:8px">
+        <input id="otherDocs" type="text" placeholder="Specify other docs">
+      </div>
+    </section>
+
+    <!-- Checklist Results -->
+    <section class="card" aria-labelledby="checklist-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="checklist-title">4) Checklist Results (50‑point QC)</h2></div>
+      <p class="help">Set Status for each checkpoint: Pass / Minor / Fail / N.A. Add notes and photo references. Totals update below.</p>
+      <div class="row" style="gap:10px;align-items:center;margin:.5rem 0">
+        <span class="tag ok">Pass: <span id="countPass">0</span></span>
+        <span class="tag warn">Minor: <span id="countMinor">0</span></span>
+        <span class="tag danger">Fail: <span id="countFail">0</span></span>
+        <span class="tag">N.A.: <span id="countNA">0</span></span>
+      </div>
+
+      <div class="divider"></div>
+
+      <table class="table-small" id="qcTable" aria-describedby="checklist-title">
+        <thead>
+          <tr>
+            <th class="mono">ID</th>
+            <th>Checkpoint</th>
+            <th>Status</th>
+            <th class="hide-sm">Notes</th>
+            <th>Photos</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Section A -->
+          <tr><td class="mono">1</td><td>Product name matches PO/spec</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="1"></div><div class="photo-preview" data-checkpoint="1"></div></div></td></tr>
+          <tr><td class="mono">2</td><td>Brand/variant matches approved artwork</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="2"></div><div class="photo-preview" data-checkpoint="2"></div></div></td></tr>
+          <tr><td class="mono">3</td><td>Language on primary pack compliant with destination market</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="3"></div><div class="photo-preview" data-checkpoint="3"></div></div></td></tr>
+          <tr><td class="mono">4</td><td>Language on outer carton compliant with destination market</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="4"></div><div class="photo-preview" data-checkpoint="4"></div></div></td></tr>
+          <tr><td class="mono">5</td><td>Country of origin correctly stated</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="5"></div><div class="photo-preview" data-checkpoint="5"></div></div></td></tr>
+          <tr><td class="mono">6</td><td>Net weight/volume correctly stated</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="6"></div><div class="photo-preview" data-checkpoint="6"></div></div></td></tr>
+          <tr><td class="mono">7</td><td>Ingredients list present and legible (where applicable)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="7"></div><div class="photo-preview" data-checkpoint="7"></div></div></td></tr>
+          <tr><td class="mono">8</td><td>Allergen statement present (if applicable)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="8"></div><div class="photo-preview" data-checkpoint="8"></div></div></td></tr>
+          <tr><td class="mono">9</td><td>Nutrition facts panel present and correct (if applicable)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="9"></div><div class="photo-preview" data-checkpoint="9"></div></div></td></tr>
+          <tr><td class="mono">10</td><td>Storage instructions present and correct</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="10"></div><div class="photo-preview" data-checkpoint="10"></div></div></td></tr>
+          <tr><td class="mono">11</td><td>Manufacturer name and address present</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="11"></div><div class="photo-preview" data-checkpoint="11"></div></div></td></tr>
+          <tr><td class="mono">12</td><td>Barcode/EAN present and scannable</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="12"></div><div class="photo-preview" data-checkpoint="12"></div></div></td></tr>
+          <tr><td class="mono">13</td><td>Batch/lot code present and legible</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="13"></div><div class="photo-preview" data-checkpoint="13"></div></div></td></tr>
+          <tr><td class="mono">14</td><td>Manufacturing date format compliant and legible</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="14"></div><div class="photo-preview" data-checkpoint="14"></div></div></td></tr>
+          <tr><td class="mono">15</td><td>Expiry/Best‑Before date format compliant and legible</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="15"></div><div class="photo-preview" data-checkpoint="15"></div></div></td></tr>
+          <tr><td class="mono">16</td><td>Regulatory marks/logos required by destination present</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="16"></div><div class="photo-preview" data-checkpoint="16"></div></div></td></tr>
+          <tr><td class="mono">17</td><td>Warning statements present where required</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="17"></div><div class="photo-preview" data-checkpoint="17"></div></div></td></tr>
+
+          <!-- Section B -->
+          <tr><td class="mono">18</td><td>Can/bottle/jar free from dents, cracks, leaks</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="18"></div><div class="photo-preview" data-checkpoint="18"></div></div></td></tr>
+          <tr><td class="mono">19</td><td>Seam/cap/crimp integrity passed visual check</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="19"></div><div class="photo-preview" data-checkpoint="19"></div></div></td></tr>
+          <tr><td class="mono">20</td><td>Correct closure torque or seam parameters within spec (spot check)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="20"></div><div class="photo-preview" data-checkpoint="20"></div></div></td></tr>
+          <tr><td class="mono">21</td><td>Label alignment and adhesion within tolerance</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="21"></div><div class="photo-preview" data-checkpoint="21"></div></div></td></tr>
+          <tr><td class="mono">22</td><td>Print quality (color, registration, sharpness) within spec</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="22"></div><div class="photo-preview" data-checkpoint="22"></div></div></td></tr>
+          <tr><td class="mono">23</td><td>No contamination or residues on primary pack</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="23"></div><div class="photo-preview" data-checkpoint="23"></div></div></td></tr>
+          <tr><td class="mono">24</td><td>Random weight/volume spot check within tolerance</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="24"></div><div class="photo-preview" data-checkpoint="24"></div></div></td></tr>
+
+          <!-- Section C -->
+          <tr><td class="mono">25</td><td>Carton SKU code and description match product</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="25"></div><div class="photo-preview" data-checkpoint="25"></div></div></td></tr>
+          <tr><td class="mono">26</td><td>Carton strength and flute grade as specified</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="26"></div><div class="photo-preview" data-checkpoint="26"></div></div></td></tr>
+          <tr><td class="mono">27</td><td>Carton seals/tape intact; no crushed corners</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="27"></div><div class="photo-preview" data-checkpoint="27"></div></div></td></tr>
+          <tr><td class="mono">28</td><td>Correct units per carton as per spec</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="28"></div><div class="photo-preview" data-checkpoint="28"></div></div></td></tr>
+          <tr><td class="mono">29</td><td>Inner dividers/cushioning used where required</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="29"></div><div class="photo-preview" data-checkpoint="29"></div></div></td></tr>
+          <tr><td class="mono">30</td><td>Pallet type and size meet spec (e.g., 1200×1000 or 1200×800)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="30"></div><div class="photo-preview" data-checkpoint="30"></div></div></td></tr>
+          <tr><td class="mono">31</td><td>Pallet condition sound: no cracks, loose boards, protruding nails</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="31"></div><div class="photo-preview" data-checkpoint="31"></div></div></td></tr>
+          <tr><td class="mono">32</td><td>Palletization pattern per approved layout (brick/column as specified)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="32"></div><div class="photo-preview" data-checkpoint="32"></div></div></td></tr>
+          <tr><td class="mono">33</td><td>Edge protectors and corner boards applied</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="33"></div><div class="photo-preview" data-checkpoint="33"></div></div></td></tr>
+          <tr><td class="mono">34</td><td>Stretch‑wrap coverage and tension adequate; no tears</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="34"></div><div class="photo-preview" data-checkpoint="34"></div></div></td></tr>
+          <tr><td class="mono">35</td><td>Top‑sheet applied (dust/moisture barrier) where required</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="35"></div><div class="photo-preview" data-checkpoint="35"></div></div></td></tr>
+          <tr><td class="mono">36</td><td>Pallet height within spec and stable (no overhang)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="36"></div><div class="photo-preview" data-checkpoint="36"></div></div></td></tr>
+
+          <!-- Section D -->
+          <tr><td class="mono">37</td><td>Total cartons counted match packing list</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="37"></div><div class="photo-preview" data-checkpoint="37"></div></div></td></tr>
+          <tr><td class="mono">38</td><td>Units per carton verified by sampling</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="38"></div><div class="photo-preview" data-checkpoint="38"></div></div></td></tr>
+          <tr><td class="mono">39</td><td>SKU mix per PO verified (variants/flavors/strengths)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="39"></div><div class="photo-preview" data-checkpoint="39"></div></div></td></tr>
+          <tr><td class="mono">40</td><td>Carton and pallet labels show SKU, lot, and quantity</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="40"></div><div class="photo-preview" data-checkpoint="40"></div></div></td></tr>
+          <tr><td class="mono">41</td><td>Over/short/damaged (OS&amp;D) recorded and segregated</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="41"></div><div class="photo-preview" data-checkpoint="41"></div></div></td></tr>
+          <tr><td class="mono">42</td><td>Random sample tally reconciles with invoice and PO</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="42"></div><div class="photo-preview" data-checkpoint="42"></div></div></td></tr>
+
+          <!-- Section E -->
+          <tr><td class="mono">43</td><td>Container number, size, and CSC plate verified</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="43"></div><div class="photo-preview" data-checkpoint="43"></div></div></td></tr>
+          <tr><td class="mono">44</td><td>Container interior clean, dry, odor‑free; no rust, holes, or light ingress</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="44"></div><div class="photo-preview" data-checkpoint="44"></div></div></td></tr>
+          <tr><td class="mono">45</td><td>Floor condition sound; no protruding nails/screws</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="45"></div><div class="photo-preview" data-checkpoint="45"></div></div></td></tr>
+          <tr><td class="mono">46</td><td>Ventilation holes unobstructed or sealed as required</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="46"></div><div class="photo-preview" data-checkpoint="46"></div></div></td></tr>
+          <tr><td class="mono">47</td><td>Desiccants applied per spec and quantity recorded</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="47"></div><div class="photo-preview" data-checkpoint="47"></div></div></td></tr>
+          <tr><td class="mono">48</td><td>Weight distribution balanced; load secured with straps/airbags</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="48"></div><div class="photo-preview" data-checkpoint="48"></div></div></td></tr>
+          <tr><td class="mono">49</td><td>Loading plan followed (pattern/sequence, LIFO as needed)</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="49"></div><div class="photo-preview" data-checkpoint="49"></div></div></td></tr>
+          <tr><td class="mono">50</td><td>Door seal applied; seal number recorded and photographed</td><td><select class="st"></select></td><td class="hide-sm"><input type="text"></td><td><div class="photo-upload-wrapper"><div class="photo-upload-btn"><span>📷 Upload</span><input type="file" accept="image/*" multiple data-checkpoint="50"></div><div class="photo-preview" data-checkpoint="50"></div></div></td></tr>
+        </tbody>
+      </table>
+
+      <div class="sticky-actions">
+        <div class="flex-end">
+          <button class="btn" id="btnClear">Clear statuses</button>
+          <button class="btn accent" id="btnScrollTop">Back to top</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Narrative Sections -->
+    <section class="card" aria-labelledby="prod-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="prod-title">5) Product Identity and Labeling</h2></div>
+      <label for="prodSummary">Narrative summary of label compliance</label>
+      <textarea id="prodSummary" placeholder="Summarize compliance, notable variances, and actions."></textarea>
+      <label for="prodDiscrep">Discrepancies and corrective actions</label>
+      <textarea id="prodDiscrep" placeholder="Detail each discrepancy and fix applied."></textarea>
+      <p class="help">Photos to include: front/back label close‑ups; barcode scan; MFD/EXP and lot code close‑ups; regulatory marks.</p>
+    </section>
+
+    <section class="card" aria-labelledby="pack-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="pack-title">6) Primary Packaging Integrity</h2></div>
+      <div class="grid cols-3">
+        <div>
+          <label for="aql">Sampling/AQL level</label>
+          <input id="aql" type="text" placeholder="e.g., General II, AQL 2.5">
+        </div>
+        <div>
+          <label for="sampleSize">Sample size</label>
+          <input id="sampleSize" type="number" placeholder="n">
+        </div>
+        <div>
+          <label for="defective">Defective</label>
+          <input id="defective" type="number" placeholder="n">
+        </div>
+      </div>
+      <label for="torque">Torque/seam spot readings</label>
+      <textarea id="torque" placeholder="Record spot-check readings: e.g., Cap torque: 12.5 N⋅m (spec: 12–14); Seam width: 1.25mm (spec: 1.2–1.3mm)"></textarea>
+      <label for="packSummary">Narrative summary of primary pack integrity</label>
+      <textarea id="packSummary" placeholder="Summarize findings on container integrity, closures, labels, print quality, contamination, and weight checks."></textarea>
+      <label for="packDiscrep">Discrepancies and corrective actions</label>
+      <textarea id="packDiscrep" placeholder="Detail defects found, root causes, and remediation steps."></textarea>
+      <p class="help">Photos to include: defective units (dents, leaks, misaligned labels); torque/seam measurements; weight check samples; print quality examples.</p>
+    </section>
+
+    <section class="card" aria-labelledby="sec-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="sec-title">7) Secondary Packaging and Palletization</h2></div>
+      <label for="secSummary">Narrative summary of carton and pallet compliance</label>
+      <textarea id="secSummary" placeholder="Summarize carton condition, pallet type/size, palletization pattern, wrap quality, and stability."></textarea>
+      <label for="secDiscrep">Discrepancies and corrective actions</label>
+      <textarea id="secDiscrep" placeholder="Detail carton damage, pallet defects, pattern deviations, and fixes applied."></textarea>
+      <p class="help">Photos to include: carton labels; pallet layout (top/side views); edge protectors; stretch-wrap coverage; damaged cartons/pallets.</p>
+    </section>
+
+    <section class="card" aria-labelledby="qty-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="qty-title">8) Quantity Verification</h2></div>
+      <div class="grid cols-3">
+        <div>
+          <label for="cartonsPO">Cartons per PO</label>
+          <input id="cartonsPO" type="number" placeholder="n">
+        </div>
+        <div>
+          <label for="cartonsCounted">Cartons counted</label>
+          <input id="cartonsCounted" type="number" placeholder="n">
+        </div>
+        <div>
+          <label for="cartonsVariance">Variance</label>
+          <input id="cartonsVariance" type="text" placeholder="Auto-calc" readonly>
+        </div>
+      </div>
+      <label for="qtySummary">Narrative summary of quantity verification</label>
+      <textarea id="qtySummary" placeholder="Summarize counting method, sampling results, SKU mix verification, and reconciliation with PO/invoice."></textarea>
+      <label for="qtyDiscrep">Discrepancies and corrective actions</label>
+      <textarea id="qtyDiscrep" placeholder="Detail over/short/damaged items, segregation, and resolution."></textarea>
+      <p class="help">Photos to include: pallet labels showing quantities; OS&amp;D items; sample cartons opened for unit count verification.</p>
+    </section>
+
+    <section class="card" aria-labelledby="cont-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="cont-title">9) Container Inspection</h2></div>
+      <label for="contSummary">Narrative summary of container condition and loading</label>
+      <textarea id="contSummary" placeholder="Summarize container interior condition, floor integrity, ventilation, desiccants, load distribution, securing, and loading sequence."></textarea>
+      <label for="contDiscrep">Discrepancies and corrective actions</label>
+      <textarea id="contDiscrep" placeholder="Detail container defects, loading deviations, and remediation."></textarea>
+      <p class="help">Photos to include: container interior (walls, floor, ceiling); CSC plate; ventilation holes; desiccant placement; load distribution; seal application; seal number close-up.</p>
+    </section>
+
+    <section class="card" aria-labelledby="sign-title">
+      <div class="section-kicker"><span class="k-dot"></span><h2 id="sign-title">10) Signatures and Approvals</h2></div>
+      <div class="grid cols-2">
+        <div>
+          <label for="inspectorSign">Inspector Signature</label>
+          <input id="inspectorSign" type="text" placeholder="Name">
+        </div>
+        <div>
+          <label for="inspectorDate">Date</label>
+          <input id="inspectorDate" type="date" readonly disabled>
+        </div>
+        <div>
+          <label for="factoryRep">Factory Representative</label>
+          <input id="factoryRep" type="text" placeholder="Name">
+        </div>
+        <div>
+          <label for="factoryDate">Date</label>
+          <input id="factoryDate" type="date" readonly disabled>
+        </div>
+        <div>
+          <label for="customerRep">Customer Representative (if present)</label>
+          <input id="customerRep" type="text" placeholder="Name">
+        </div>
+        <div>
+          <label for="customerDate">Date</label>
+          <input id="customerDate" type="date" readonly disabled>
+        </div>
+      </div>
+      <label for="remarks">Additional Remarks</label>
+      <textarea id="remarks" placeholder="Any additional notes, observations, or recommendations."></textarea>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = '/api/qa';
+    let currentReportId = null;
+    let autoSaveTimer = null;
+    let isSaving = false;
+    let lastSavedData = null;
+
+    // Auto-resize textarea function
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Auto-set signature dates to today immediately
+      const today = new Date().toISOString().split('T')[0];
+      const inspectorDate = document.getElementById('inspectorDate');
+      const factoryDate = document.getElementById('factoryDate');
+      const customerDate = document.getElementById('customerDate');
+      
+      if (inspectorDate) {
+        inspectorDate.value = today;
+        inspectorDate.disabled = true;
+        inspectorDate.readOnly = true;
+      }
+      if (factoryDate) {
+        factoryDate.value = today;
+        factoryDate.disabled = true;
+        factoryDate.readOnly = true;
+      }
+      if (customerDate) {
+        customerDate.value = today;
+        customerDate.disabled = true;
+        customerDate.readOnly = true;
+      }
+      
+      // Setup auto-resize for all textareas
+      document.querySelectorAll('textarea').forEach(textarea => {
+        // Set initial height
+        autoResizeTextarea(textarea);
+        
+        // Auto-resize on input
+        textarea.addEventListener('input', function() {
+          autoResizeTextarea(this);
+        });
+        
+        // Auto-resize on paste
+        textarea.addEventListener('paste', function() {
+          setTimeout(() => autoResizeTextarea(this), 10);
+        });
+      });
+    });
+
+    // Check if we're editing an existing report from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('id');
+    if (editId) {
+      currentReportId = editId;
+      document.getElementById('currentReportId').value = editId;
+    }
+
+    // Initialize status dropdowns
+    document.querySelectorAll('.st').forEach(select => {
+      const opts = ['', 'Pass', 'Minor', 'Fail', 'N.A.'];
+      opts.forEach(val => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val || '—';
+        select.appendChild(opt);
+      });
+    });
+
+    // Update counters
+    function updateCounters() {
+      const counts = { pass: 0, minor: 0, fail: 0, na: 0 };
+      document.querySelectorAll('.st').forEach(select => {
+        const val = select.value.toLowerCase();
+        if (val === 'pass') counts.pass++;
+        else if (val === 'minor') counts.minor++;
+        else if (val === 'fail') counts.fail++;
+        else if (val === 'n.a.' || val === 'na') counts.na++;
+      });
+      document.getElementById('countPass').textContent = counts.pass;
+      document.getElementById('countMinor').textContent = counts.minor;
+      document.getElementById('countFail').textContent = counts.fail;
+      document.getElementById('countNA').textContent = counts.na;
+    }
+
+    // Attach change listeners
+    document.querySelectorAll('.st').forEach(select => {
+      select.addEventListener('change', updateCounters);
+    });
+
+    // Other docs toggle
+    document.getElementById('doc-other').addEventListener('change', function() {
+      document.getElementById('otherDocsWrap').style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Carton variance calculation
+    const cartonsPO = document.getElementById('cartonsPO');
+    const cartonsCounted = document.getElementById('cartonsCounted');
+    const cartonsVariance = document.getElementById('cartonsVariance');
+    function calcVariance() {
+      const po = parseFloat(cartonsPO.value) || 0;
+      const cnt = parseFloat(cartonsCounted.value) || 0;
+      const diff = cnt - po;
+      if (po === 0 && cnt === 0) {
+        cartonsVariance.value = '';
+      } else {
+        cartonsVariance.value = diff === 0 ? '0' : (diff > 0 ? `+${diff}` : `${diff}`);
+      }
+    }
+    cartonsPO.addEventListener('input', calcVariance);
+    cartonsCounted.addEventListener('input', calcVariance);
+
+    // Convert image to base64
+    function imageToBase64(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = this.naturalWidth;
+          canvas.height = this.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(this, 0, 0);
+          try {
+            const base64 = canvas.toDataURL('image/jpeg');
+            resolve(base64);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    // Generate HTML for PDF export (hides interactive elements, expands textareas, table format for fields)
+    async function generatePDFHTML() {
+      // Clone the container
+      const container = document.querySelector('.container');
+      const clone = container.cloneNode(true);
+      
+      // Convert logo to base64 and add at the top right (only appears on first page)
+      let logoBase64 = '';
+      try {
+        logoBase64 = await imageToBase64('/assets/sodulogo.jpeg');
+      } catch (e) {
+        console.warn('Could not load logo for PDF:', e);
+      }
+      
+      if (logoBase64) {
+        const logoDiv = document.createElement('div');
+        logoDiv.className = 'pdf-logo';
+        const logoImg = document.createElement('img');
+        logoImg.src = logoBase64;
+        logoImg.alt = 'Logo';
+        logoDiv.appendChild(logoImg);
+        clone.insertBefore(logoDiv, clone.firstChild);
+      }
+      
+      // Hide interactive elements in clone
+      const elementsToHide = clone.querySelectorAll('.toolbar, .btn, .sticky-actions, .save-status, .reports-list, .photo-upload-btn, .tag-remove, .photo-preview-item .remove');
+      elementsToHide.forEach(el => {
+        el.style.display = 'none';
+      });
+      
+      // Convert grid forms to table format
+      // First, get original DOM for reading actual values
+      const originalContainer = document.querySelector('.container');
+      
+      clone.querySelectorAll('.card').forEach((card, cardIndex) => {
+        const originalCards = originalContainer ? originalContainer.querySelectorAll('.card') : [];
+        const originalCard = originalCards[cardIndex] || null;
+        
+        const grids = card.querySelectorAll('.grid');
+        grids.forEach((grid, gridIndex) => {
+          // Get corresponding original grid
+          const originalGrid = originalCard ? originalCard.querySelectorAll('.grid')[gridIndex] : null;
+          
+          // Check if this is a form grid (has labels and inputs)
+          const hasFormFields = grid.querySelector('label, input, select, textarea');
+          if (hasFormFields) {
+            // Check if this is the Documents Reviewed section with checkboxes
+            const hasCheckboxes = grid.querySelector('label.tag input[type="checkbox"]');
+            
+            if (hasCheckboxes) {
+              // Handle Documents Reviewed checkboxes - create a table with checked items
+              const table = document.createElement('table');
+              table.className = 'form-table';
+              table.style.width = '100%';
+              table.style.borderCollapse = 'collapse';
+              table.style.marginBottom = '8px';
+              
+              const checkedDocs = [];
+              grid.querySelectorAll('label.tag').forEach(label => {
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                  // Get the text after the checkbox
+                  const text = label.cloneNode(true);
+                  text.querySelector('input').remove();
+                  checkedDocs.push(text.textContent.trim());
+                }
+              });
+              
+              // Add "Others" field if checked
+              const otherCheckbox = clone.querySelector('#doc-other');
+              const otherDocsInput = clone.querySelector('#otherDocs');
+              if (otherCheckbox && otherCheckbox.checked && otherDocsInput && otherDocsInput.value) {
+                checkedDocs.push(`Others: ${otherDocsInput.value}`);
+              }
+              
+              // Create a single row showing all checked documents
+              if (checkedDocs.length > 0 || true) { // Always show the row
+                const row = document.createElement('tr');
+                const labelCell = document.createElement('td');
+                labelCell.className = 'field-label';
+                labelCell.textContent = 'Documents Reviewed';
+                labelCell.style.fontWeight = 'bold';
+                labelCell.style.width = '30%';
+                labelCell.style.padding = '6px 12px';
+                labelCell.style.verticalAlign = 'top';
+                labelCell.style.borderBottom = '1px solid #eee';
+                
+                const valueCell = document.createElement('td');
+                valueCell.className = 'field-value';
+                valueCell.textContent = checkedDocs.length > 0 ? checkedDocs.join(', ') : 'None';
+                valueCell.style.padding = '6px 12px';
+                valueCell.style.verticalAlign = 'top';
+                valueCell.style.borderBottom = '1px solid #eee';
+                valueCell.style.wordWrap = 'break-word';
+                
+                row.appendChild(labelCell);
+                row.appendChild(valueCell);
+                table.appendChild(row);
+              }
+              
+              // Replace grid with table
+              grid.parentNode.replaceChild(table, grid);
+            } else {
+              // Regular form grid - convert to table
+              const table = document.createElement('table');
+              table.className = 'form-table';
+              table.style.width = '100%';
+              table.style.borderCollapse = 'collapse';
+              table.style.marginBottom = '8px';
+              
+              // Get all form fields in this grid
+              const fields = [];
+              grid.querySelectorAll('div').forEach((div, divIndex) => {
+                const label = div.querySelector('label');
+                const input = div.querySelector('input, select, textarea');
+                const tagContainer = div.querySelector('.tag-input-container');
+                
+                // Get corresponding original div for reading actual values
+                const originalDiv = originalGrid ? originalGrid.querySelectorAll('div')[divIndex] : null;
+                const originalInput = originalDiv ? originalDiv.querySelector('input, select, textarea') : null;
+                const originalTagContainer = originalDiv ? originalDiv.querySelector('.tag-input-container') : null;
+                
+                if (label && (input || tagContainer)) {
+                  let value = '';
+                  
+                  if (tagContainer) {
+                    // Handle product tags - use original if available
+                    const tagContainerToUse = originalTagContainer || tagContainer;
+                    const tags = tagContainerToUse.querySelectorAll('.product-tag span');
+                    value = Array.from(tags).map(tag => tag.textContent).join(', ');
+                    if (!value) {
+                      const inputField = tagContainerToUse.querySelector('input');
+                      if (inputField && inputField.value) {
+                        value = inputField.value;
+                      }
+                    }
+                  } else if (input) {
+                    // Use original input for reading values
+                    const inputToUse = originalInput || input;
+                    
+                    if (inputToUse.type === 'checkbox') {
+                      value = inputToUse.checked ? 'Yes' : 'No';
+                    } else if (inputToUse.tagName === 'SELECT') {
+                      // For selects, get the selected option's text from original
+                      // Check if there's an actual value selected (not empty)
+                      if (inputToUse.value && inputToUse.value !== '') {
+                        const selectedOption = inputToUse.options[inputToUse.selectedIndex];
+                        value = selectedOption ? selectedOption.text : inputToUse.value;
+                      } else {
+                        value = '';
+                      }
+                    } else if (inputToUse.tagName === 'TEXTAREA') {
+                      // For textareas, preserve line breaks
+                      value = inputToUse.value || '';
+                    } else {
+                      value = inputToUse.value || '';
+                    }
+                  }
+                  
+                  fields.push({
+                    label: label.textContent.replace(':', '').trim(),
+                    value: value || ''
+                  });
+                }
+              });
+              
+              // Create table rows for each field
+              fields.forEach(field => {
+                const row = document.createElement('tr');
+                const labelCell = document.createElement('td');
+                labelCell.className = 'field-label';
+                labelCell.textContent = field.label;
+                labelCell.style.fontWeight = 'bold';
+                labelCell.style.width = '30%';
+                labelCell.style.padding = '6px 12px';
+                labelCell.style.verticalAlign = 'top';
+                labelCell.style.borderBottom = '1px solid #eee';
+                
+                const valueCell = document.createElement('td');
+                valueCell.className = 'field-value';
+                valueCell.textContent = field.value || '';
+                valueCell.style.padding = '6px 12px';
+                valueCell.style.verticalAlign = 'top';
+                valueCell.style.borderBottom = '1px solid #eee';
+                valueCell.style.wordWrap = 'break-word';
+                valueCell.style.whiteSpace = 'pre-wrap';
+                
+                row.appendChild(labelCell);
+                row.appendChild(valueCell);
+                table.appendChild(row);
+              });
+              
+              // Replace grid with table
+              if (fields.length > 0) {
+                grid.parentNode.replaceChild(table, grid);
+              }
+            }
+          }
+        });
+      });
+      
+      // Handle "otherDocs" input if it's visible
+      clone.querySelectorAll('#otherDocsWrap').forEach(wrap => {
+        if (wrap.style.display !== 'none') {
+          const input = wrap.querySelector('#otherDocs');
+          if (input && input.value) {
+            // This will be handled by the Documents Reviewed section above
+          }
+        }
+      });
+      
+      // Ensure checklist table notes column is visible and shows values
+      const qcTable = clone.querySelector('#qcTable');
+      if (qcTable) {
+        // Make Notes header visible
+        const notesHeader = qcTable.querySelector('thead th.hide-sm');
+        if (notesHeader) {
+          notesHeader.classList.remove('hide-sm');
+          notesHeader.style.display = 'table-cell';
+        }
+        
+        // Process all rows in checklist table
+        // First, get the original table to read actual values
+        const originalTable = document.querySelector('#qcTable');
+        const originalRows = originalTable ? originalTable.querySelectorAll('tbody tr') : [];
+        
+        clone.querySelectorAll('#qcTable tbody tr').forEach((row, rowIndex) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 5) {
+            // Handle Status column (3rd column, index 2) - convert select to text
+            const statusCell = cells[2];
+            if (statusCell) {
+              const statusSelect = statusCell.querySelector('select');
+              if (statusSelect) {
+                // Get the actual value from the original DOM
+                let statusText = '—';
+                if (originalRows[rowIndex]) {
+                  const originalCells = originalRows[rowIndex].querySelectorAll('td');
+                  if (originalCells.length >= 3) {
+                    const originalStatusSelect = originalCells[2].querySelector('select');
+                    if (originalStatusSelect && originalStatusSelect.value && originalStatusSelect.value !== '') {
+                      const selectedOption = originalStatusSelect.options[originalStatusSelect.selectedIndex];
+                      statusText = selectedOption ? selectedOption.text : originalStatusSelect.value;
+                    }
+                  }
+                } else {
+                  // Fallback: use clone's value if original not available
+                  if (statusSelect.value && statusSelect.value !== '') {
+                    const selectedOption = statusSelect.options[statusSelect.selectedIndex];
+                    statusText = selectedOption ? selectedOption.text : statusSelect.value;
+                  }
+                }
+                // Replace select with text
+                const textNode = document.createTextNode(statusText);
+                statusCell.replaceChild(textNode, statusSelect);
+                statusCell.style.textAlign = 'center';
+              }
+            }
+            
+            // Make sure Notes column (4th column, index 3) is visible
+            const notesCell = cells[3];
+            if (notesCell) {
+              notesCell.classList.remove('hide-sm');
+              notesCell.style.display = 'table-cell';
+              notesCell.style.visibility = 'visible';
+              // Get the input value and display it
+              const notesInput = notesCell.querySelector('input[type="text"]');
+              if (notesInput) {
+                const notesValue = notesInput.value || '';
+                // Replace input with text node
+                const textNode = document.createTextNode(notesValue);
+                notesInput.parentNode.replaceChild(textNode, notesInput);
+              }
+            }
+          }
+        });
+      }
+      
+      // Handle standalone labels with inputs/selects/textareas (not in grids, not in tables)
+      clone.querySelectorAll('.card').forEach((card, cardIndex) => {
+        const originalCards = originalContainer ? originalContainer.querySelectorAll('.card') : [];
+        const originalCard = originalCards[cardIndex] || null;
+        
+        const standaloneLabels = card.querySelectorAll('label:not(.grid label):not(.tag label):not(table label)');
+        standaloneLabels.forEach((label, labelIndex) => {
+          const labelText = label.textContent.replace(':', '').trim();
+          const nextSibling = label.nextElementSibling;
+          
+          // Get corresponding original label and sibling
+          const originalStandaloneLabels = originalCard ? originalCard.querySelectorAll('label:not(.grid label):not(.tag label):not(table label)') : [];
+          const originalLabel = originalStandaloneLabels[labelIndex] || null;
+          const originalNextSibling = originalLabel ? originalLabel.nextElementSibling : null;
+          
+          if (nextSibling && (nextSibling.tagName === 'INPUT' || nextSibling.tagName === 'SELECT' || nextSibling.tagName === 'TEXTAREA' || nextSibling.classList.contains('tag-input-wrapper'))) {
+            // Check if already in a table
+            if (!label.closest('table')) {
+              // Create a table row for this field
+              const table = document.createElement('table');
+              table.className = 'form-table';
+              table.style.width = '100%';
+              table.style.borderCollapse = 'collapse';
+              table.style.marginBottom = '8px';
+              
+              const row = document.createElement('tr');
+              const labelCell = document.createElement('td');
+              labelCell.className = 'field-label';
+              labelCell.textContent = labelText;
+              labelCell.style.fontWeight = 'bold';
+              labelCell.style.width = '30%';
+              labelCell.style.padding = '6px 12px';
+              labelCell.style.verticalAlign = 'top';
+              labelCell.style.borderBottom = '1px solid #eee';
+              
+              const valueCell = document.createElement('td');
+              valueCell.className = 'field-value';
+              
+              let value = '';
+              // Use original sibling for reading values
+              const siblingToUse = originalNextSibling || nextSibling;
+              
+              if (siblingToUse.classList.contains('tag-input-wrapper')) {
+                const tagContainer = siblingToUse.querySelector('.tag-input-container');
+                const tags = tagContainer ? tagContainer.querySelectorAll('.product-tag span') : [];
+                value = Array.from(tags).map(tag => tag.textContent).join(', ');
+                if (!value) {
+                  const inputField = tagContainer ? tagContainer.querySelector('input') : null;
+                  if (inputField && inputField.value) {
+                    value = inputField.value;
+                  }
+                }
+              } else if (siblingToUse.tagName === 'SELECT') {
+                // For selects, get the selected option's text from original
+                // Check if there's an actual value selected (not empty)
+                if (siblingToUse.value && siblingToUse.value !== '') {
+                  const selectedOption = siblingToUse.options[siblingToUse.selectedIndex];
+                  value = selectedOption ? selectedOption.text : siblingToUse.value;
+                } else {
+                  value = '';
+                }
+              } else if (siblingToUse.tagName === 'TEXTAREA') {
+                // For textareas, preserve line breaks
+                value = siblingToUse.value || '';
+              } else {
+                value = siblingToUse.value || '';
+              }
+              
+              valueCell.textContent = value;
+              valueCell.style.padding = '6px 12px';
+              valueCell.style.verticalAlign = 'top';
+              valueCell.style.borderBottom = '1px solid #eee';
+              valueCell.style.wordWrap = 'break-word';
+              valueCell.style.whiteSpace = 'pre-wrap';
+              
+              row.appendChild(labelCell);
+              row.appendChild(valueCell);
+              table.appendChild(row);
+              
+              // Replace label and input with table
+              label.parentNode.insertBefore(table, label);
+              label.remove();
+              if (nextSibling && nextSibling.parentNode) {
+                nextSibling.remove();
+              }
+            }
+          }
+        });
+      });
+      
+      // Make ALL remaining selects appear as text (not just .st)
+      // This catches any selects that weren't already processed in grids, standalone labels, or checklist table
+      // First, get original selects to read actual values
+      const originalSelects = {};
+      document.querySelectorAll('select').forEach((origSelect, index) => {
+        if (origSelect.id) {
+          originalSelects[origSelect.id] = origSelect;
+        } else {
+          // For selects without ID, use a selector-based approach
+          const selector = Array.from(document.querySelectorAll('select')).indexOf(origSelect);
+          originalSelects[`_index_${selector}`] = origSelect;
+        }
+      });
+      
+      clone.querySelectorAll('select').forEach((select, index) => {
+        // Skip if already processed or if parent is invalid
+        if (select.parentNode && select.parentNode.tagName !== 'BODY') {
+          let text = '—';
+          
+          // Try to get value from original select
+          let originalSelect = null;
+          if (select.id && originalSelects[select.id]) {
+            originalSelect = originalSelects[select.id];
+          } else {
+            // Fallback: find by position/index
+            const allOriginalSelects = Array.from(document.querySelectorAll('select'));
+            const allCloneSelects = Array.from(clone.querySelectorAll('select'));
+            const cloneIndex = allCloneSelects.indexOf(select);
+            if (cloneIndex >= 0 && cloneIndex < allOriginalSelects.length) {
+              originalSelect = allOriginalSelects[cloneIndex];
+            }
+          }
+          
+          // Use original select value if available, otherwise use clone
+          const selectToUse = originalSelect || select;
+          if (selectToUse.value && selectToUse.value !== '') {
+            const selectedOption = selectToUse.options[selectToUse.selectedIndex];
+            text = selectedOption ? selectedOption.text : selectToUse.value;
+          }
+          
+          const textNode = document.createTextNode(text);
+          select.parentNode.replaceChild(textNode, select);
+        }
+      });
+      
+      // Optimize spacing in cards - reduce but keep readable
+      clone.querySelectorAll('.card').forEach(card => {
+        card.style.padding = '10px';
+        card.style.margin = '8px 0';
+        card.style.pageBreakInside = 'avoid';
+      });
+      
+      // Table cell padding - readable but compact
+      clone.querySelectorAll('table td, table th').forEach(cell => {
+        if (!cell.classList.contains('field-label') && !cell.classList.contains('field-value')) {
+          cell.style.padding = '4px 6px';
+          cell.style.fontSize = '8pt';
+        }
+      });
+      
+      // Heading sizes - readable
+      clone.querySelectorAll('h1').forEach(h1 => {
+        h1.style.fontSize = '16pt';
+        h1.style.margin = '0 0 6px 0';
+      });
+      clone.querySelectorAll('h2').forEach(h2 => {
+        h2.style.fontSize = '12pt';
+        h2.style.margin = '0 0 4px 0';
+      });
+      
+      // Make images bigger for PDF
+      clone.querySelectorAll('.photo-preview-item').forEach(item => {
+        item.style.width = '200px';
+        item.style.height = '200px';
+      });
+      
+      // Keep image URLs as-is (don't convert to base64 to avoid large payload)
+      // Puppeteer will fetch images from their URLs when generating the PDF
+      // This significantly reduces the payload size when there are many images
+      const allImages = clone.querySelectorAll('img');
+      for (const img of allImages) {
+        // Only convert logo to base64 if it's a local file path (starts with /)
+        // Checkpoint images are already absolute URLs from Swell, so keep them as-is
+        if (img.closest('.pdf-logo') && img.src && img.src.startsWith('/') && !img.src.startsWith('http')) {
+          try {
+            const base64 = await imageToBase64(img.src);
+            img.src = base64;
+          } catch (e) {
+            console.warn('Could not convert logo to base64:', img.src, e);
+            // Convert to absolute URL as fallback
+            if (img.src.startsWith('/')) {
+              img.src = window.location.origin + img.src;
+            }
+          }
+        } else if (img.src && !img.src.startsWith('data:') && !img.src.startsWith('http') && img.src.startsWith('/')) {
+          // Convert relative URLs to absolute (fallback for any local images)
+          img.src = window.location.origin + img.src;
+        }
+        // Only apply 200px sizing to checklist images, not the logo
+        if (!img.closest('.pdf-logo')) {
+          img.style.maxWidth = '200px';
+          img.style.maxHeight = '200px';
+          img.style.objectFit = 'cover';
+        }
+      }
+      
+      // Don't include all styles - we'll use inline styles in the HTML template
+      // This reduces payload size significantly
+      const styles = '';
+      
+      // Build complete HTML document with readable styling and white background
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QC Report PDF</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+    * {
+      background: white !important;
+      color: black !important;
+      border-color: #ddd !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: white !important;
+      color: black !important;
+      font-size: 9pt;
+      line-height: 1.4;
+    }
+    html {
+      background: white !important;
+    }
+    .container {
+      max-width: 100%;
+      padding: 8px;
+      background: white !important;
+      position: relative;
+    }
+    .pdf-logo {
+      position: absolute;
+      top: 4mm;
+      right: 10mm;
+      max-width: 150px;
+      max-height: 60px;
+      z-index: 1000;
+      page-break-after: avoid;
+    }
+    .pdf-logo img {
+      width: auto;
+      height: auto;
+      max-width: 150px;
+      max-height: 60px;
+      object-fit: contain;
+    }
+    .card {
+      background: white !important;
+      border: 1px solid #ddd !important;
+      padding: 10px;
+      margin: 8px 0;
+      page-break-inside: avoid;
+      box-shadow: none !important;
+      orphans: 3;
+      widows: 3;
+    }
+    .card section {
+      page-break-inside: avoid;
+    }
+    .toolbar, .btn, .sticky-actions, .save-status, 
+    #reportsList, .reports-list, .photo-upload-btn,
+    .tag-input-container .tag-remove, .photo-preview-item .remove {
+      display: none !important;
+    }
+    h1, h2, h3 {
+      color: black !important;
+      background: white !important;
+      page-break-after: avoid;
+    }
+    h1 {
+      font-size: 16pt !important;
+      margin: 0 0 8px 0 !important;
+    }
+    h2 {
+      font-size: 12pt !important;
+      margin: 0 0 6px 0 !important;
+      color: black !important;
+    }
+    p, label, small, .help, .muted {
+      color: black !important;
+      background: white !important;
+      font-size: 9pt !important;
+    }
+    label {
+      margin: 4px 0 2px 0 !important;
+    }
+    table {
+      font-size: 8pt !important;
+      background: white !important;
+      border: 1px solid #ddd !important;
+      page-break-inside: auto;
+      border-collapse: collapse;
+    }
+    .form-table {
+      margin-bottom: 12px !important;
+      border: none !important;
+    }
+    .form-table .field-label {
+      font-weight: bold !important;
+      width: 30% !important;
+      padding: 6px 12px !important;
+      vertical-align: top !important;
+      border-bottom: 1px solid #eee !important;
+      background: #f9f9f9 !important;
+      color: black !important;
+      font-size: 9pt !important;
+    }
+    .form-table .field-value {
+      width: 70% !important;
+      padding: 6px 12px !important;
+      vertical-align: top !important;
+      border-bottom: 1px solid #eee !important;
+      background: white !important;
+      color: black !important;
+      font-size: 9pt !important;
+      word-wrap: break-word !important;
+      white-space: pre-wrap !important;
+    }
+    thead {
+      background: #f5f5f5 !important;
+      display: table-header-group;
+    }
+    thead th {
+      background: #f5f5f5 !important;
+      color: black !important;
+      border: 1px solid #ddd !important;
+      padding: 4px 6px !important;
+      font-size: 8pt !important;
+    }
+    tbody {
+      background: white !important;
+      display: table-row-group;
+    }
+    tbody td {
+      background: white !important;
+      color: black !important;
+      border: 1px solid #ddd !important;
+      padding: 4px 6px !important;
+    }
+    tbody tr {
+      background: white !important;
+      page-break-inside: avoid;
+    }
+    tbody tr:hover {
+      background: white !important;
+    }
+    td, th {
+      padding: 4px 6px !important;
+      font-size: 8pt !important;
+      background: white !important;
+      color: black !important;
+    }
+    input[type="text"], input[type="datetime-local"], input[type="number"], input[type="date"], select {
+      background: white !important;
+      color: black !important;
+      border: 1px solid #ddd !important;
+      font-size: 9pt !important;
+      padding: 5px !important;
+    }
+    textarea {
+      border: 1px solid #ddd !important;
+      background: white !important;
+      color: black !important;
+      overflow: visible !important;
+      font-size: 9pt !important;
+      line-height: 1.4 !important;
+      padding: 6px !important;
+      height: auto !important;
+      min-height: auto !important;
+      max-height: none !important;
+      white-space: pre-wrap !important;
+    }
+    input, select {
+      font-size: 9pt !important;
+      padding: 5px !important;
+      color: black !important;
+    }
+    .grid {
+      gap: 8px !important;
+    }
+    .chip, .tag {
+      background: #f0f0f0 !important;
+      color: black !important;
+      border: 1px solid #ddd !important;
+      font-size: 8pt !important;
+    }
+    .tag.ok {
+      background: #e8f5e9 !important;
+      color: #2e7d32 !important;
+      border-color: #c8e6c9 !important;
+    }
+    .tag.warn {
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border-color: #ffe0b2 !important;
+    }
+    .tag.danger {
+      background: #ffebee !important;
+      color: #c62828 !important;
+      border-color: #ffcdd2 !important;
+    }
+    .photo-preview-item {
+      width: 200px !important;
+      height: 200px !important;
+      border: 1px solid #ddd !important;
+      background: white !important;
+      display: inline-block !important;
+      margin: 2px !important;
+    }
+    .photo-preview-item img {
+      background: white !important;
+      max-width: 200px !important;
+      max-height: 200px !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+    .photo-preview {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 4px !important;
+      margin-top: 4px !important;
+    }
+    .section-kicker {
+      background: white !important;
+    }
+    .k-dot {
+      background: black !important;
+    }
+    .divider {
+      background: #ddd !important;
+      margin: 6px 0 !important;
+    }
+    .product-tag {
+      background: #f0f0f0 !important;
+      color: black !important;
+      border: 1px solid #ddd !important;
+    }
+    select.st {
+      border: none !important;
+      background: transparent !important;
+      appearance: none;
+      color: black !important;
+    }
+    input[type="checkbox"] {
+      background: white !important;
+      border: 1px solid #ddd !important;
+    }
+    /* Better page break control */
+    .card + .card {
+      page-break-before: auto;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  ${clone.outerHTML}
+</body>
+</html>`;
+      
+      // Return the HTML (already has all necessary inline styles in the template)
+      return html;
+    }
+
+    // Store current PDF job ID
+    let currentPDFJobId = null;
+    let pdfPollInterval = null;
+
+    // Update PDF status display
+    function updatePDFStatus(status, message = '') {
+      const statusEl = document.getElementById('pdfStatus');
+      if (status) {
+        statusEl.className = 'save-status ' + status;
+        statusEl.textContent = message;
+        statusEl.style.display = 'inline-flex';
+      } else {
+        statusEl.style.display = 'none';
+        statusEl.textContent = '';
+      }
+    }
+
+    // Poll for PDF status
+    async function pollPDFStatus(jobId) {
+      try {
+        const response = await fetch(`${API_BASE}/pdf-status/${jobId}`);
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to check PDF status');
+        }
+        
+        const job = result.job;
+        
+        if (job.status === 'completed') {
+          // Stop polling
+          if (pdfPollInterval) {
+            clearInterval(pdfPollInterval);
+            pdfPollInterval = null;
+          }
+          
+          // Update status
+          updatePDFStatus('saved', 'PDF ready');
+          
+          // Show download button
+          showPDFDownloadButton(jobId);
+        } else if (job.status === 'failed') {
+          // Stop polling
+          if (pdfPollInterval) {
+            clearInterval(pdfPollInterval);
+            pdfPollInterval = null;
+          }
+          
+          // Update status
+          updatePDFStatus('error', 'PDF generation failed');
+          
+          // Show error
+          const btn = document.getElementById('btnPrint');
+          btn.disabled = false;
+          btn.textContent = 'Print / Save PDF';
+          btn.classList.remove('accent');
+          setTimeout(() => {
+            updatePDFStatus('', '');
+          }, 5000);
+          
+          alert('PDF generation failed: ' + (job.error || 'Unknown error'));
+        } else if (job.status === 'processing') {
+          // Update status to show it's processing
+          updatePDFStatus('saving', 'Generating PDF...');
+        } else {
+          // Pending status
+          updatePDFStatus('saving', 'Starting PDF generation...');
+        }
+        // If still processing, continue polling
+      } catch (error) {
+        console.error('Error polling PDF status:', error);
+        // Continue polling on error (might be temporary)
+      }
+    }
+
+    // Show download button for completed PDF
+    function showPDFDownloadButton(jobId) {
+      const btn = document.getElementById('btnPrint');
+      btn.disabled = false;
+      btn.textContent = 'Download PDF';
+      btn.classList.add('accent');
+      
+      // Update click handler to download
+      btn.onclick = async () => {
+        try {
+          const response = await fetch(`${API_BASE}/download-pdf/${jobId}`);
+          
+          if (!response.ok) {
+            throw new Error('Failed to download PDF');
+          }
+          
+          const blob = await response.blob();
+          
+          // Generate filename
+          const po = document.getElementById('po')?.value || 'unnamed';
+          const customer = document.getElementById('customer')?.value || '';
+          const filename = `QC-Report-${po}${customer ? '-' + customer : ''}-${new Date().toISOString().split('T')[0]}.pdf`;
+          
+          // Download PDF
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          // Reset button after download
+          btn.textContent = 'Print / Save PDF';
+          btn.classList.remove('accent');
+          btn.onclick = startPDFGeneration;
+          currentPDFJobId = null;
+          
+          // Clear status
+          updatePDFStatus('', '');
+        } catch (error) {
+          console.error('PDF download error:', error);
+          alert('Failed to download PDF: ' + error.message);
+        }
+      };
+    }
+
+    // Start PDF generation
+    async function startPDFGeneration() {
+      const btn = document.getElementById('btnPrint');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Generating PDF...';
+      btn.classList.remove('accent');
+      
+      // Clear any existing polling
+      if (pdfPollInterval) {
+        clearInterval(pdfPollInterval);
+        pdfPollInterval = null;
+      }
+      
+      // Show initial status
+      updatePDFStatus('saving', 'Starting PDF generation...');
+      
+      try {
+        // Generate HTML for PDF
+        const html = await generatePDFHTML();
+        
+        // Get current report ID if available
+        const reportId = document.getElementById('currentReportId')?.value || null;
+        
+        // Start PDF generation job
+        const response = await fetch(`${API_BASE}/generate-pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ html, reportId })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to start PDF generation');
+        }
+        
+        const result = await response.json();
+        currentPDFJobId = result.jobId;
+        
+        // Start polling for status
+        btn.textContent = 'Generating PDF...';
+        pdfPollInterval = setInterval(() => {
+          pollPDFStatus(currentPDFJobId);
+        }, 2000); // Poll every 2 seconds
+        
+        // Also poll immediately
+        pollPDFStatus(currentPDFJobId);
+        
+      } catch (error) {
+        console.error('PDF generation error:', error);
+        updatePDFStatus('error', 'Failed to start');
+        setTimeout(() => {
+          updatePDFStatus('', '');
+        }, 5000);
+        alert('Failed to start PDF generation: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        
+        if (pdfPollInterval) {
+          clearInterval(pdfPollInterval);
+          pdfPollInterval = null;
+        }
+      }
+    }
+
+    // Export PDF using server-side Puppeteer (async)
+    document.getElementById('btnPrint').addEventListener('click', startPDFGeneration);
+
+    // Export JSON
+    document.getElementById('btnExport').addEventListener('click', () => {
+      const data = collectFormData();
+      
+      // Download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qc-report-${data.po || 'unnamed'}-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Clear statuses
+    document.getElementById('btnClear').addEventListener('click', () => {
+      if (confirm('Clear all status selections in the checklist?')) {
+        document.querySelectorAll('.st').forEach(select => {
+          select.value = '';
+        });
+        updateCounters();
+      }
+    });
+
+    // Scroll to top
+    document.getElementById('btnScrollTop').addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Initialize counters
+    updateCounters();
+
+    // Auto-set signature dates to today
+    function setSignatureDates() {
+      const today = new Date().toISOString().split('T')[0];
+      const inspectorDate = document.getElementById('inspectorDate');
+      const factoryDate = document.getElementById('factoryDate');
+      const customerDate = document.getElementById('customerDate');
+      
+      // Always set to today and ensure they're disabled
+      inspectorDate.value = today;
+      factoryDate.value = today;
+      customerDate.value = today;
+      
+      // Ensure they're disabled
+      inspectorDate.disabled = true;
+      inspectorDate.readOnly = true;
+      factoryDate.disabled = true;
+      factoryDate.readOnly = true;
+      customerDate.disabled = true;
+      customerDate.readOnly = true;
+    }
+    
+    // Set dates immediately on page load
+    setSignatureDates();
+
+    // Store images for each checkpoint
+    const checkpointImages = {};
+
+    // Product tags management
+    const productTags = [];
+    const productsInput = document.getElementById('products');
+    const productsContainer = document.getElementById('productsContainer');
+
+    function addProductTag(product) {
+      const trimmed = product.trim();
+      if (trimmed && !productTags.includes(trimmed)) {
+        productTags.push(trimmed);
+        renderProductTags();
+      }
+    }
+
+    function removeProductTag(product) {
+      const index = productTags.indexOf(product);
+      if (index > -1) {
+        productTags.splice(index, 1);
+        renderProductTags();
+      }
+    }
+
+    function renderProductTags() {
+      // Remove all existing tags (except the input)
+      const existingTags = productsContainer.querySelectorAll('.product-tag');
+      existingTags.forEach(tag => tag.remove());
+      
+      // Add tags before the input
+      productTags.forEach(product => {
+        const tag = document.createElement('div');
+        tag.className = 'product-tag';
+        tag.innerHTML = `
+          <span>${product}</span>
+          <button type="button" class="tag-remove" data-product="${product}">×</button>
+        `;
+        productsContainer.insertBefore(tag, productsInput);
+        
+        // Add remove handler
+        tag.querySelector('.tag-remove').addEventListener('click', function() {
+          removeProductTag(this.getAttribute('data-product'));
+        });
+      });
+    }
+
+    // Handle product input
+    productsInput.addEventListener('keydown', function(e) {
+      if (e.key === ',' || e.key === 'Enter') {
+        e.preventDefault();
+        const value = this.value.trim();
+        if (value) {
+          addProductTag(value);
+          this.value = '';
+        }
+      } else if (e.key === 'Backspace' && this.value === '' && productTags.length > 0) {
+        // Remove last tag if input is empty and backspace is pressed
+        removeProductTag(productTags[productTags.length - 1]);
+      }
+    });
+
+    // Handle paste with comma-separated values
+    productsInput.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      const products = pastedText.split(',').map(p => p.trim()).filter(p => p);
+      products.forEach(product => addProductTag(product));
+      this.value = '';
+    });
+
+    // Handle image uploads
+    function setupImageUploads() {
+      document.querySelectorAll('input[type="file"][data-checkpoint]').forEach(input => {
+        input.addEventListener('change', async function(e) {
+          const checkpoint = this.getAttribute('data-checkpoint');
+          const files = Array.from(e.target.files);
+          
+          if (files.length === 0) return;
+
+          const previewContainer = document.querySelector(`.photo-preview[data-checkpoint="${checkpoint}"]`);
+          const uploadBtn = this.closest('.photo-upload-wrapper').querySelector('.photo-upload-btn');
+          
+          // Show uploading state
+          uploadBtn.innerHTML = '<span>⏳ Uploading...</span>';
+
+          // Upload each file
+          for (const file of files) {
+            try {
+              const formData = new FormData();
+              formData.append('image', file);
+
+              const response = await fetch(`${API_BASE}/upload-image`, {
+                method: 'POST',
+                body: formData
+              });
+
+              const result = await response.json();
+
+              if (result.success && result.image) {
+                // Store image data
+                if (!checkpointImages[checkpoint]) {
+                  checkpointImages[checkpoint] = [];
+                }
+                checkpointImages[checkpoint].push({
+                  id: result.image.id,
+                  url: result.image.url,
+                  filename: result.image.filename
+                });
+
+                // Add preview
+                const previewItem = document.createElement('div');
+                previewItem.className = 'photo-preview-item';
+                previewItem.setAttribute('data-image-id', result.image.id);
+                previewItem.innerHTML = `
+                  <img src="${result.image.url}" alt="${result.image.filename}">
+                  <button type="button" class="remove" data-checkpoint="${checkpoint}" data-image-id="${result.image.id}">×</button>
+                `;
+                previewContainer.appendChild(previewItem);
+                
+                // Add remove handler
+                previewItem.querySelector('.remove').addEventListener('click', function() {
+                  removeImage(this.getAttribute('data-checkpoint'), this.getAttribute('data-image-id'));
+                });
+              }
+            } catch (error) {
+              console.error('Error uploading image:', error);
+              alert(`Failed to upload ${file.name}`);
+            }
+          }
+
+          // Reset button
+          uploadBtn.innerHTML = '<span>📷 Upload</span>';
+          if (checkpointImages[checkpoint] && checkpointImages[checkpoint].length > 0) {
+            uploadBtn.classList.add('has-image');
+          }
+          
+          // Clear file input
+          this.value = '';
+        });
+      });
+    }
+
+    // Remove image
+    window.removeImage = function(checkpoint, imageId) {
+      if (checkpointImages[checkpoint]) {
+        checkpointImages[checkpoint] = checkpointImages[checkpoint].filter(img => img.id !== imageId);
+        const previewContainer = document.querySelector(`.photo-preview[data-checkpoint="${checkpoint}"]`);
+        if (previewContainer) {
+          // Find and remove the item by data attribute
+          const item = previewContainer.querySelector(`.photo-preview-item[data-image-id="${imageId}"]`);
+          if (item) item.remove();
+          
+          const uploadBtn = previewContainer.closest('.photo-upload-wrapper')?.querySelector('.photo-upload-btn');
+          if (uploadBtn && (!checkpointImages[checkpoint] || checkpointImages[checkpoint].length === 0)) {
+            uploadBtn.classList.remove('has-image');
+          }
+        }
+      }
+    };
+
+    // Save status display
+    function updateSaveStatus(status, message = '') {
+      const statusEl = document.getElementById('saveStatus');
+      statusEl.className = 'save-status ' + status;
+      statusEl.textContent = message || '';
+    }
+
+    // Collect all form data
+    function collectFormData() {
+      const data = {};
+      
+      // Cover
+      ['customer', 'po', 'factory', 'containers', 'seals', 'incoterms', 
+       'loadDate', 'inspector', 'weather', 'location', 'photoLink'].forEach(id => {
+        const el = document.getElementById(id);
+        data[id] = el ? el.value : '';
+      });
+      
+      // Products as comma-separated string
+      data.products = productTags.join(', ');
+
+      // Executive Summary
+      ['overallStatus', 'decisionNeeded', 'shipmentId', 'majorIssues', 'minorIssues', 'actionsTaken'].forEach(id => {
+        const el = document.getElementById(id);
+        data[id] = el ? el.value : '';
+      });
+
+      // Documents
+      data.documents = {};
+      ['doc-po', 'doc-inv', 'doc-pack', 'doc-art', 'doc-pallet', 'doc-reg', 'doc-other'].forEach(id => {
+        const el = document.getElementById(id);
+        data.documents[id] = el ? el.checked : false;
+      });
+      const otherDocsEl = document.getElementById('otherDocs');
+      data.documents.otherDocs = otherDocsEl ? otherDocsEl.value : '';
+
+      // Checklist
+      data.checklist = [];
+      document.querySelectorAll('#qcTable tbody tr').forEach((row, idx) => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+          const checkpointId = cells[0].textContent.trim();
+          const images = checkpointImages[checkpointId] || [];
+          
+          data.checklist.push({
+            id: checkpointId,
+            checkpoint: cells[1].textContent.trim(),
+            status: cells[2].querySelector('select')?.value || '',
+            notes: cells[3].querySelector('input')?.value || '',
+            images: images // Store array of image objects with id, url, filename
+          });
+        }
+      });
+
+      // Narrative sections
+      ['prodSummary', 'prodDiscrep', 'aql', 'sampleSize', 'defective', 'torque', 
+       'packSummary', 'packDiscrep', 'secSummary', 'secDiscrep', 'cartonsPO', 
+       'cartonsCounted', 'cartonsVariance', 'qtySummary', 'qtyDiscrep', 
+       'contSummary', 'contDiscrep', 'inspectorSign', 'inspectorDate', 
+       'factoryRep', 'factoryDate', 'customerRep', 'customerDate', 'remarks'].forEach(id => {
+        const el = document.getElementById(id);
+        data[id] = el ? el.value : '';
+      });
+
+      return data;
+    }
+
+    // Save report (create or update)
+    async function saveReport(showMessage = true) {
+      if (isSaving) return;
+      
+      const data = collectFormData();
+      const dataStr = JSON.stringify(data);
+      
+      // Skip if data hasn't changed
+      if (lastSavedData === dataStr) {
+        if (showMessage) updateSaveStatus('saved', 'No changes to save');
+        return;
+      }
+
+      isSaving = true;
+      updateSaveStatus('saving', 'Saving...');
+
+      try {
+        const url = currentReportId 
+          ? `${API_BASE}/reports/${currentReportId}`
+          : `${API_BASE}/reports`;
+        
+        const method = currentReportId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ reportData: data })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          if (!currentReportId) {
+            currentReportId = result.report.id;
+            document.getElementById('currentReportId').value = currentReportId;
+            // Update URL without reload
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('id', currentReportId);
+            window.history.pushState({}, '', newUrl);
+          }
+          lastSavedData = dataStr;
+          updateSaveStatus('saved', 'Saved');
+          if (showMessage) {
+            setTimeout(() => updateSaveStatus('', ''), 2000);
+          }
+        } else {
+          throw new Error(result.message || 'Failed to save');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        updateSaveStatus('error', 'Save failed');
+        setTimeout(() => updateSaveStatus('', ''), 3000);
+      } finally {
+        isSaving = false;
+      }
+    }
+
+    // Load report data into form
+    function loadReportData(data) {
+      // Cover
+      ['customer', 'po', 'factory', 'containers', 'seals', 'incoterms', 
+       'loadDate', 'inspector', 'weather', 'location', 'photoLink'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && data[id]) el.value = data[id];
+      });
+      
+      // Load products as tags
+      if (data.products) {
+        productTags.length = 0; // Clear existing
+        const products = data.products.split(',').map(p => p.trim()).filter(p => p);
+        products.forEach(product => productTags.push(product));
+        renderProductTags();
+        productsInput.value = '';
+      }
+
+      // Executive Summary
+      ['overallStatus', 'decisionNeeded', 'shipmentId', 'majorIssues', 'minorIssues', 'actionsTaken'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && data[id]) el.value = data[id];
+      });
+
+      // Documents
+      if (data.documents) {
+        ['doc-po', 'doc-inv', 'doc-pack', 'doc-art', 'doc-pallet', 'doc-reg', 'doc-other'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.checked = data.documents[id] || false;
+        });
+        const otherDocsEl = document.getElementById('otherDocs');
+        if (otherDocsEl && data.documents.otherDocs) {
+          otherDocsEl.value = data.documents.otherDocs;
+          document.getElementById('otherDocsWrap').style.display = data.documents['doc-other'] ? 'block' : 'none';
+        }
+      }
+
+      // Checklist
+      if (data.checklist && Array.isArray(data.checklist)) {
+        const rows = document.querySelectorAll('#qcTable tbody tr');
+        data.checklist.forEach((item, idx) => {
+          if (idx < rows.length) {
+            const cells = rows[idx].querySelectorAll('td');
+            if (cells.length >= 5) {
+              const checkpointId = cells[0].textContent.trim();
+              const statusSelect = cells[2].querySelector('select');
+              if (statusSelect && item.status) statusSelect.value = item.status;
+              const notesInput = cells[3].querySelector('input');
+              if (notesInput && item.notes) notesInput.value = item.notes;
+              
+              // Load images
+              if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+                checkpointImages[checkpointId] = item.images;
+                const previewContainer = document.querySelector(`.photo-preview[data-checkpoint="${checkpointId}"]`);
+                const uploadBtn = previewContainer?.closest('.photo-upload-wrapper')?.querySelector('.photo-upload-btn');
+                
+                if (previewContainer) {
+                  previewContainer.innerHTML = '';
+                  item.images.forEach(img => {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'photo-preview-item';
+                    previewItem.setAttribute('data-image-id', img.id);
+                    previewItem.innerHTML = `
+                      <img src="${img.url}" alt="${img.filename || 'Image'}">
+                      <button type="button" class="remove" data-checkpoint="${checkpointId}" data-image-id="${img.id}">×</button>
+                    `;
+                    previewContainer.appendChild(previewItem);
+                    
+                    // Add remove handler
+                    previewItem.querySelector('.remove').addEventListener('click', function() {
+                      removeImage(this.getAttribute('data-checkpoint'), this.getAttribute('data-image-id'));
+                    });
+                  });
+                  
+                  if (uploadBtn) {
+                    uploadBtn.classList.add('has-image');
+                  }
+                }
+              }
+            }
+          }
+        });
+        updateCounters();
+      }
+
+      // Narrative sections
+      ['prodSummary', 'prodDiscrep', 'aql', 'sampleSize', 'defective', 'torque', 
+       'packSummary', 'packDiscrep', 'secSummary', 'secDiscrep', 'cartonsPO', 
+       'cartonsCounted', 'cartonsVariance', 'qtySummary', 'qtyDiscrep', 
+       'contSummary', 'contDiscrep', 'inspectorSign', 
+       'factoryRep', 'customerRep', 'remarks'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && data[id]) {
+          el.value = data[id];
+          // Auto-resize if it's a textarea
+          if (el.tagName === 'TEXTAREA') {
+            autoResizeTextarea(el);
+          }
+        }
+      });
+
+      // Load signature dates if they exist, otherwise keep today's date
+      if (data.inspectorDate) {
+        document.getElementById('inspectorDate').value = data.inspectorDate;
+      }
+      if (data.factoryDate) {
+        document.getElementById('factoryDate').value = data.factoryDate;
+      }
+      if (data.customerDate) {
+        document.getElementById('customerDate').value = data.customerDate;
+      }
+      
+      // Ensure dates remain disabled
+      document.getElementById('inspectorDate').disabled = true;
+      document.getElementById('factoryDate').disabled = true;
+      document.getElementById('customerDate').disabled = true;
+
+      // Mark as saved
+      lastSavedData = JSON.stringify(data);
+    }
+
+    // Load existing report
+    async function loadReport(id) {
+      try {
+        const response = await fetch(`${API_BASE}/reports/${id}`);
+        const result = await response.json();
+        
+        if (result.success && result.report) {
+          currentReportId = id;
+          document.getElementById('currentReportId').value = id;
+          loadReportData(result.report.data);
+          
+          // Update URL
+          const newUrl = new URL(window.location);
+          newUrl.searchParams.set('id', id);
+          window.history.pushState({}, '', newUrl);
+          
+          // Hide list view
+          document.getElementById('reportsList').classList.remove('active');
+          
+          // Scroll to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } catch (error) {
+        console.error('Error loading report:', error);
+        alert('Failed to load report');
+      }
+    }
+
+    // Load reports list
+    async function loadReportsList() {
+      const listEl = document.getElementById('reportsList');
+      const contentEl = document.getElementById('reportsListContent');
+      
+      listEl.classList.toggle('active');
+      
+      if (!listEl.classList.contains('active')) return;
+      
+      contentEl.innerHTML = '<p class="help">Loading reports...</p>';
+      
+      try {
+        const response = await fetch(`${API_BASE}/reports`);
+        const result = await response.json();
+        
+        if (result.success && result.reports) {
+          if (result.reports.length === 0) {
+            contentEl.innerHTML = '<p class="help">No reports found. Create a new report to get started.</p>';
+            return;
+          }
+          
+          contentEl.innerHTML = result.reports.map(report => {
+            const date = new Date(report.dateUpdated || report.dateCreated);
+            const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            return `
+              <div class="report-item" onclick="loadReport('${report.id}')">
+                <div class="report-item-info">
+                  <div style="font-weight:600;margin-bottom:.25rem">${report.po || 'N/A'} - ${report.customer || 'N/A'}</div>
+                  <div class="report-item-meta">
+                    <span>Factory: ${report.factory || 'N/A'}</span>
+                    <span>Status: ${report.overallStatus || 'N/A'}</span>
+                    <span>Updated: ${dateStr}</span>
+                  </div>
+                </div>
+                <div class="report-item-actions">
+                  <button class="btn accent" onclick="event.stopPropagation(); loadReport('${report.id}')">Edit</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          contentEl.innerHTML = '<p class="help">Failed to load reports.</p>';
+        }
+      } catch (error) {
+        console.error('Error loading reports list:', error);
+        contentEl.innerHTML = '<p class="help">Error loading reports.</p>';
+      }
+    }
+
+    // Auto-save on input change (debounced)
+    function setupAutoSave() {
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', () => {
+          clearTimeout(autoSaveTimer);
+          autoSaveTimer = setTimeout(() => {
+            // Auto-save works for both new and existing reports
+            // For new reports, it will create them; for existing, it will update
+            saveReport(false); // Don't show message for auto-save
+          }, 3000); // Auto-save after 3 seconds of inactivity
+        });
+      });
+    }
+
+    // Manual save button
+    document.getElementById('btnSave').addEventListener('click', () => {
+      saveReport(true);
+    });
+
+    // New report button
+    document.getElementById('btnNew').addEventListener('click', () => {
+      if (confirm('Create a new report? Any unsaved changes will be lost.')) {
+        currentReportId = null;
+        document.getElementById('currentReportId').value = '';
+        document.querySelectorAll('input, textarea, select').forEach(el => {
+          if (el.type === 'checkbox') {
+            el.checked = false;
+          } else if (el.type !== 'file' && el.id !== 'inspectorDate' && el.id !== 'factoryDate' && el.id !== 'customerDate' && el.id !== 'products') {
+            el.value = '';
+          }
+        });
+        // Clear product tags
+        productTags.length = 0;
+        renderProductTags();
+        productsInput.value = '';
+        // Reset signature dates to today
+        setSignatureDates();
+        // Clear all images
+        Object.keys(checkpointImages).forEach(key => delete checkpointImages[key]);
+        document.querySelectorAll('.photo-preview').forEach(container => {
+          container.innerHTML = '';
+        });
+        document.querySelectorAll('.photo-upload-btn').forEach(btn => {
+          btn.classList.remove('has-image');
+        });
+        updateCounters();
+        lastSavedData = null;
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.delete('id');
+        window.history.pushState({}, '', newUrl);
+        document.getElementById('reportsList').classList.remove('active');
+      }
+    });
+
+    // List reports button
+    document.getElementById('btnList').addEventListener('click', loadReportsList);
+
+    // Load report if ID is in URL
+    if (editId) {
+      loadReport(editId);
+    }
+
+    // Setup auto-save
+    setupAutoSave();
+
+    // Setup image uploads
+    setupImageUploads();
+  </script>
+  
+  <style>
+    @media print {
+      /* Hide all interactive elements */
+      .toolbar, .btn, .sticky-actions, .save-status, 
+      #reportsList, .reports-list, .photo-upload-btn,
+      .tag-input-container .tag-remove, .photo-preview-item .remove {
+        display: none !important;
+      }
+      
+      /* Page setup */
+      @page {
+        size: A4;
+        margin: 1.5cm;
+      }
+      
+      body {
+        background: white;
+        color: black;
+        font-size: 10pt;
+        line-height: 1.4;
+      }
+      
+      .container {
+        max-width: 100%;
+        padding: 0;
+      }
+      
+      /* Cards */
+      .card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 12px;
+        margin: 12px 0;
+        page-break-inside: avoid;
+        box-shadow: none;
+        overflow: visible;
+      }
+      
+      /* Ensure all content is visible - but be selective */
+      input, textarea, select, label, p, .help, .card, td, th {
+        overflow: visible !important;
+      }
+      
+      /* Remove height restrictions on textareas */
+      textarea {
+        max-height: none !important;
+        height: auto !important;
+      }
+      
+      /* Text containers */
+      label, p, .help {
+        overflow: visible;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+      
+      /* Header */
+      header.card {
+        page-break-after: avoid;
+        border-bottom: 2px solid #333;
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+      }
+      
+      h1 {
+        font-size: 18pt;
+        color: #000;
+        margin-bottom: 4px;
+      }
+      
+      h2 {
+        font-size: 14pt;
+        color: #000;
+        margin: 8px 0 4px;
+      }
+      
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        page-break-inside: auto;
+        overflow: visible;
+        display: table;
+      }
+      
+      thead {
+        display: table-header-group;
+      }
+      
+      tbody {
+        display: table-row-group;
+      }
+      
+      tr {
+        display: table-row;
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+      
+      td, th {
+        display: table-cell;
+      }
+      
+      thead th {
+        background: #f5f5f5 !important;
+        color: #000 !important;
+        border: 1px solid #333;
+        padding: 6px 4px;
+        font-weight: bold;
+        position: static;
+      }
+      
+      tbody td {
+        border: 1px solid #ddd;
+        padding: 4px;
+        vertical-align: top;
+        overflow: visible;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+      
+      /* Ensure table cells show all content */
+      td input[type="text"],
+      td textarea {
+        width: 100%;
+        min-width: 0;
+        overflow: visible;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      
+      /* Ensure all columns are visible and properly sized */
+      .table-small {
+        table-layout: fixed;
+        width: 100%;
+      }
+      
+      .table-small th:nth-child(1),
+      .table-small td:nth-child(1) {
+        width: 4%;
+        font-size: 8pt;
+        text-align: center;
+        padding: 4px 2px;
+      }
+      
+      .table-small th:nth-child(2),
+      .table-small td:nth-child(2) {
+        width: 40%;
+        min-width: 0;
+        word-wrap: break-word;
+        padding: 4px 6px;
+      }
+      
+      .table-small th:nth-child(3),
+      .table-small td:nth-child(3) {
+        width: 10%;
+        text-align: center;
+        padding: 4px 2px;
+      }
+      
+    .table-small th:nth-child(4),
+    .table-small td:nth-child(4) {
+      width: 30% !important;
+      font-size: 8pt !important;
+      padding: 4px 6px !important;
+      word-wrap: break-word !important;
+      display: table-cell !important;
+      visibility: visible !important;
+    }
+    .table-small th.hide-sm,
+    .table-small td.hide-sm {
+      display: table-cell !important;
+      visibility: visible !important;
+    }
+      
+      .table-small th:nth-child(5),
+      .table-small td:nth-child(5) {
+        width: 16%;
+        padding: 4px 4px;
+      }
+      
+      /* Status selects - show only selected value as text */
+      .st {
+        border: none;
+        background: transparent;
+        padding: 0;
+        font-size: 9pt;
+        width: 100%;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        color: #000;
+        font-weight: 500;
+      }
+      
+      /* Hide select dropdown arrow in print */
+      .st::-ms-expand {
+        display: none;
+      }
+      
+      /* Make selects look like plain text */
+      td .st {
+        display: block;
+        text-align: center;
+      }
+      
+      /* Hide empty status selects */
+      .st option[value=""] {
+        display: none;
+      }
+      
+      /* Inputs and textareas */
+      input[type="text"], input[type="datetime-local"], 
+      input[type="number"], select {
+        border: none;
+        background: transparent;
+        padding: 2px 0;
+        color: #000;
+        font-size: 9pt;
+        width: 100%;
+        overflow: visible;
+        white-space: normal;
+        word-wrap: break-word;
+      }
+      
+      textarea {
+        border: none;
+        background: transparent;
+        padding: 4px 0;
+        color: #000;
+        font-size: 9pt;
+        width: 100%;
+        min-height: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        display: block;
+        resize: none;
+        box-sizing: border-box;
+      }
+      
+      /* Force textareas to expand to content */
+      textarea.print-expanded {
+        height: auto !important;
+        min-height: auto !important;
+      }
+      
+      /* Make sure textarea content is fully visible */
+      textarea::before,
+      textarea::after {
+        display: none;
+      }
+      
+      /* Product tags */
+      .tag-input-container {
+        border: none;
+        background: transparent;
+        padding: 0;
+      }
+      
+      .product-tag {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        color: #000;
+        padding: 2px 6px;
+        margin: 2px;
+        display: inline-block;
+      }
+      
+      /* Photos */
+      .photo-upload-wrapper {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      
+      .photo-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      
+      .photo-preview-item {
+        width: 60px;
+        height: 60px;
+        border: 1px solid #ddd;
+        page-break-inside: avoid;
+      }
+      
+      .photo-preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      
+      /* Labels */
+      label {
+        color: #000;
+        font-weight: bold;
+        margin: 6px 0 2px;
+      }
+      
+      /* Chips and tags */
+      .chip, .tag {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        color: #000;
+        padding: 2px 6px;
+        margin: 2px;
+      }
+      
+      /* Grids */
+      .grid {
+        display: grid;
+        gap: 8px;
+      }
+      
+      .grid.cols-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      
+      .grid.cols-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      /* Section kickers */
+      .section-kicker {
+        border-bottom: 1px solid #333;
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+      }
+      
+      .k-dot {
+        background: #000;
+      }
+      
+      /* Help text */
+      .help {
+        color: #666;
+        font-size: 8pt;
+        font-style: italic;
+      }
+      
+      /* Dividers */
+      .divider {
+        background: #ddd;
+        margin: 8px 0;
+      }
+      
+      /* Checkboxes */
+      input[type="checkbox"] {
+        margin-right: 4px;
+      }
+      
+      /* Status tags */
+      .tag.ok {
+        background: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+      }
+      
+      .tag.warn {
+        background: #fff3cd;
+        border-color: #ffeaa7;
+        color: #856404;
+      }
+      
+      .tag.danger {
+        background: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+      }
+      
+      /* Prevent page breaks in bad places */
+      .card section {
+        page-break-inside: avoid;
+      }
+      
+      /* Row styling */
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</body>
+</html>
+

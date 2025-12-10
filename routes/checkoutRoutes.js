@@ -21,5 +21,6 @@ router.post(
     checkoutController.updateOrderDocuments
 );
 
+router.post('/calculate-load', checkoutController.calculateLoad)
 
 module.exports = router;

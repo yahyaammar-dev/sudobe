@@ -156,101 +156,6 @@ exports.searchProductsGroupedByFactory = async (req, res) => {
 
 
 
-exports.searchProductsByFactory = async (req, res) => {
-    const { factoryId, accountId, locale } = req.params;
-
-    try {
-        // Step 1: Fetch factory account
-        const customer = await swell.get(`/accounts/${factoryId}`);
-        if (!customer) {
-            return res.status(404).json({
-                success: false,
-                message: 'Factory (customer) not found',
-            });
-        }
-
-        const user = await swell.get(`/accounts/${accountId}`);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User (customer) not found',
-            });
-        }
-
-
-        // Step 2: Fetch products related to this factory
-        const productsResult = await swell.get(`/products?locale=${locale}`, {
-            where: {
-                'content.factory_id': factoryId,
-            },
-            limit: 100,
-        });
-
-        const products = productsResult?.results || [];
-
-
-
-        // Step 3: Get all category IDs from all products
-        const allCategoryIds = new Set();
-        for (const product of products) {
-            const categoryIds = product.category_index?.id || [];
-            categoryIds.forEach((id) => allCategoryIds.add(id));
-        }
-
-        // Step 4: Fetch actual category data from Swell
-        const categoryMap = {};
-        if (allCategoryIds.size > 0) {
-            const categoriesResult = await swell.get('/categories', {
-                where: {
-                    id: { $in: Array.from(allCategoryIds) },
-                },
-                limit: 100,
-            });
-
-            for (const category of categoriesResult?.results || []) {
-                categoryMap[category.id] = category.name;
-            }
-        }
-
-        // Step 5: Group products by category name
-        const groupedByCategory = {};
-        for (const product of products) {
-            const categoryIds = product.category_index?.id || [];
-            const categoryName = categoryIds.length > 0
-                ? categoryMap[categoryIds[0]] || 'Uncategorized'
-                : 'Uncategorized';
-
-            if (!groupedByCategory[categoryName]) {
-                groupedByCategory[categoryName] = [];
-            }
-
-            const updatedProduct = transformProducts(product)
-
-            groupedByCategory[categoryName].push(updatedProduct);
-        }
-
-        // Step 6: Return final response
-        return res.status(200).json({
-            success: true,
-            factory: {
-                id: customer.id,
-                name: customer?.name,
-                email: customer?.email,
-                phone: customer.phone,
-                ...customer
-            },
-            groupedProducts: groupedByCategory,
-        });
-
-    } catch (error) {
-        console.error('Error in searchProductsByFactory:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal Server Error',
-        });
-    }
-};
-
 
 exports.cancelOrder = async (req, res) => {
     const { orderId } = req.params;
@@ -299,6 +204,7 @@ exports.cancelOrder = async (req, res) => {
 
 exports.searchProductsByFactory = async (req, res) => {
     const { factoryId, accountId } = req.params;
+
 
     try {
         // Step 1: Fetch factory and user accounts
@@ -362,8 +268,37 @@ exports.searchProductsByFactory = async (req, res) => {
                 ? categoryMap[categoryIds[0]] || 'Uncategorized'
                 : 'Uncategorized';
 
+            // Process images to ensure they have the file object structure
+            const processedImages = Array.isArray(product.images)
+                ? product.images.map(img => {
+                    // If image already has file object, return as is
+                    if (img.file) {
+                        return img;
+                    }
+                    // If image only has url and id, create file object structure
+                    if (img.url && img.id) {
+                        return {
+                            file: {
+                                id: img.id,
+                                url: img.url,
+                                date_uploaded: new Date().toISOString(),
+                                length: 0,
+                                md5: '',
+                                filename: img.url.split('/').pop() || 'image',
+                                content_type: 'image/jpeg',
+                                width: null,
+                                height: null
+                            },
+                            id: img.id
+                        };
+                    }
+                    return img;
+                }).filter(Boolean)
+                : [];
+
             const enrichedProduct = {
                 ...product,
+                images: processedImages,
                 isFavorite: favoriteIds.includes(product.id),
             };
 
@@ -408,8 +343,8 @@ exports.getFactories = async (req, res) => {
             limit: 1000 // Adjust limit as needed
         });
 
-        // Optional: Filter out empty string values
-        const validFactories = factories.filter(acc => acc.content?.factory_name?.trim());
+        // Optional: Filter out empty string values // also filter those where verified is false
+        const validFactories = factories.filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified);
 
         return res.status(200).json({
             success: true,
@@ -440,12 +375,26 @@ exports.getFeaturedProducts = async (req, res) => {
         const parsedPage = parseInt(page, 10);
         const parsedLimit = parseInt(limit, 10);
 
+        // First get verified factories to filter products
+        const verifiedFactoriesResponse = await swell.get('/accounts', {
+            where: {
+                'content.factory_name': { $ne: null },
+                'content.verified': true
+            },
+            limit: 1000
+        });
+        
+        const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
+            .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
+            .map(factory => factory.id);
+
         // Fetch promotions, featured products, and account favorites in parallel
         const [promotionsResponse, productsResponse, accountResponse] = await Promise.all([
             swell.get('/promotions', { where: { active: true } }),
             swell.get(`/products?$locale=${locale}`, {
                 where: {
-                    'content.featured': true
+                    'content.featured': true,
+                    'content.factory_id': { $in: verifiedFactoryIds }
                 },
                 page: parsedPage,
                 limit: parsedLimit,
@@ -597,7 +546,7 @@ exports.getProductDetails = async (req, res) => {
             }
         };
 
-
+        console.log(enrichedProduct)
         return res.status(200).json({
             success: true,
             product: transformProducts(enrichedProduct),
@@ -639,10 +588,24 @@ exports.getByCategory = async (req, res) => {
             favoriteIds = user?.metadata?.favorites || [];
         }
 
-        // Step 3: Fetch products in the given category
+        // Step 3: First get verified factories to filter products
+        const verifiedFactoriesResponse = await swell.get('/accounts', {
+            where: {
+                'content.factory_name': { $ne: null },
+                'content.verified': true
+            },
+            limit: 1000
+        });
+        
+        const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
+            .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
+            .map(factory => factory.id);
+
+        // Step 4: Fetch products in the given category, but only from verified factories
         const productsResponse = await swell.get(`/products?$locale=${locale}`, {
             where: {
                 'category_index.id': categoryId,
+                'content.factory_id': { $in: verifiedFactoryIds },
                 active: true
             },
             limit: parseInt(limit),
@@ -651,10 +614,10 @@ exports.getByCategory = async (req, res) => {
 
         const products = productsResponse.results || [];
 
-        // Step 4: Extract unique factory IDs
+        // Step 5: Extract unique factory IDs
         const factoryIds = [...new Set(products.map(p => p.content?.factory_id).filter(Boolean))];
 
-        // Step 5: Fetch factory info in bulk
+        // Step 6: Fetch factory info in bulk
         const factoryMap = {};
         if (factoryIds.length > 0) {
             const factories = await swell.get('/accounts', {
@@ -666,7 +629,7 @@ exports.getByCategory = async (req, res) => {
             }
         }
 
-        // Step 6: Map discounts
+        // Step 7: Map discounts
         const discountMap = {};
         for (const promo of promotionsResponse.results || []) {
             for (const discount of promo.discounts || []) {
@@ -676,7 +639,7 @@ exports.getByCategory = async (req, res) => {
             }
         }
 
-        // Step 7: Enrich products
+        // Step 8: Enrich products
         const enrichedProducts = products.map(product => {
             const discountPercent = discountMap[product.id] || 0;
             const discountedPrice = discountPercent
@@ -685,8 +648,37 @@ exports.getByCategory = async (req, res) => {
             const factoryId = product.content?.factory_id;
             const factory = factoryMap[factoryId] || null;
 
+            // Process images to ensure they have the file object structure
+            const processedImages = Array.isArray(product.images)
+                ? product.images.map(img => {
+                    // If image already has file object, return as is
+                    if (img.file) {
+                        return img;
+                    }
+                    // If image only has url and id, create file object structure
+                    if (img.url && img.id) {
+                        return {
+                            file: {
+                                id: img.id,
+                                url: img.url,
+                                date_uploaded: new Date().toISOString(),
+                                length: 0,
+                                md5: '',
+                                filename: img.url.split('/').pop() || 'image',
+                                content_type: 'image/jpeg',
+                                width: null,
+                                height: null
+                            },
+                            id: img.id
+                        };
+                    }
+                    return img;
+                }).filter(Boolean)
+                : [];
+
             const enriched = {
                 ...product,
+                images: processedImages,
                 isFavorite: favoriteIds.includes(product.id),
                 discount_percent: discountPercent,
                 discounted_price: discountedPrice,
@@ -696,8 +688,7 @@ exports.getByCategory = async (req, res) => {
                 },
             };
 
-            return enriched
-            // return transformProducts ? transformProducts(enriched) : enriched;
+            return enriched;
         });
 
 
@@ -728,7 +719,7 @@ exports.getByCategory = async (req, res) => {
             });
         }
 
-        // Step 8: Return response
+        // Step 9: Return response
         return res.status(200).json({
             success: true,
             products: enrichedProducts,

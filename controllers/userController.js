@@ -11,12 +11,20 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 exports.sendOtpViaWhatsApp = async (req, res) => {
   try {
     const { toPhoneNumber } = req.body;
-    console.log(toPhoneNumber)
+    console.log('Phone number:', toPhoneNumber);
+    
+    // Debug environment variables
+    console.log('Environment check:', {
+      hasAccountSid: !!process.env.TWILIO_ACCOUNT_SID,
+      hasAuthToken: !!process.env.TWILIO_AUTH_TOKEN,
+      whatsappFrom: process.env.TWILIO_WHATSAPP_FROM
+    });
+    
     // 1. Find user
     const result = await swell.get('/accounts', {
-      where: { phone: toPhoneNumber }
+      where: { phone: '+' + toPhoneNumber }
     });
-
+    console.log(result)
     if (result.count === 0) {
       return res.status(404).json({
         success: false,
@@ -27,49 +35,91 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
     const customer = result.results[0];
     const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
 
-    // 2. Send WhatsApp message
-    const waMessage = await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_FROM,
-      to: `whatsapp:${toPhoneNumber}`,
-      contentSid: 'HXb6146d89abdf91f375080169682081fb',
-      contentVariables: JSON.stringify({ "1": otp.toString() }),
-    });
-
-    // 3. Wait for a few seconds and check status
-    await new Promise(resolve => setTimeout(resolve, 4000)); // 4-second delay
-    const statusCheck = await client.messages(waMessage.sid).fetch();
-
-    // // 4. If WhatsApp failed or undelivered, send SMS instead
-    if (["failed", "undelivered"].includes(statusCheck.status)) {
-      await client.messages.create({
-        body: `${otp} is your OTP from Sodu. Please do not share it with anyone.`,
-        from: '+17276155600',
-        to: `+${toPhoneNumber}`
+    // 2. Send WhatsApp message with better error handling
+    try {
+      const waMessage = await client.messages.create({
+        from: process.env.TWILIO_WHATSAPP_FROM,
+        to: `whatsapp:${toPhoneNumber}`,
+        contentSid: 'HXb6146d89abdf91f375080169682081fb',
+        contentVariables: JSON.stringify({ "1": otp.toString() }),
       });
+      
+      console.log('WhatsApp message sent:', waMessage.sid);
+      
+      // 3. Wait and check status
+      await new Promise(resolve => setTimeout(resolve, 4000));
+      const statusCheck = await client.messages(waMessage.sid).fetch();
+      
+      // 4. If WhatsApp failed, send SMS instead
+      if (["failed", "undelivered"].includes(statusCheck.status)) {
+        console.log('WhatsApp failed, sending SMS instead');
+        await client.messages.create({
+          body: `${otp} is your OTP from Sodu. Please do not share it with anyone.`,
+          from: '+17276155600',
+          to: `+${toPhoneNumber}`
+        });
+      }
+
+      // 5. Store OTP in user account
+      await swell.put(`/accounts/${customer.id}`, {
+        content: {
+          ...customer.content,
+          otp: otp
+        }
+      });
+
+      return res.status(200).json({
+        status: true,
+        otp: otp,
+        email: customer?.email,
+        message: {
+          channel: (["failed", "undelivered"].includes(statusCheck.status)) ? "sms" : "whatsapp",
+          sid: waMessage.sid,
+          deliveryStatus: statusCheck.status
+        }
+      });
+      
+    } catch (twilioError) {
+      console.error('Twilio specific error:', twilioError);
+      
+      // If WhatsApp fails, try SMS as fallback
+      try {
+        await client.messages.create({
+          body: `${otp} is your OTP from Sodu. Please do not share it with anyone.`,
+          from: '+17276155600',
+          to: `+${toPhoneNumber}`
+        });
+        
+        // Store OTP even if WhatsApp failed
+        await swell.put(`/accounts/${customer.id}`, {
+          content: {
+            ...customer.content,
+            otp: otp
+          }
+        });
+        
+        return res.status(200).json({
+          status: true,
+          otp: otp,
+          email: customer?.email,
+          message: {
+            channel: "sms",
+            sid: "fallback",
+            deliveryStatus: "sent_via_sms"
+          }
+        });
+      } catch (smsError) {
+        throw new Error(`Both WhatsApp and SMS failed: ${twilioError.message}`);
+      }
     }
-
-    // 5. Store OTP in user account
-    await swell.put(`/accounts/${customer.id}`, {
-      content: {
-        ...customer.content,
-        otp: otp
-      }
-    });
-
-    return res.status(200).json({
-      status: true,
-      otp: otp,
-      email: customer?.email,
-      message: {
-        channel: (["failed", "undelivered"].includes(statusCheck.status)) ? "sms" : "whatsapp",
-        sid: waMessage.sid,
-        deliveryStatus: statusCheck.status
-      }
-    });
 
   } catch (err) {
     console.error('OTP send error:', err.message);
-    return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal Server Error',
+      error: err.message 
+    });
   }
 };
 
@@ -86,7 +136,7 @@ exports.verifyOtp = async (req, res) => {
     console.log(toPhoneNumber)
     // Get account by phone number
     const result = await swell.get('/accounts', {
-      where: { phone: toPhoneNumber }
+      where: { phone: '+' + toPhoneNumber }
     });
 
     if (result.count === 0) {
@@ -458,6 +508,29 @@ exports.debugContentTemplate = async (req, res) => {
     console.error('Failed to fetch template:', err);
     return res.status(500).json({
       success: false,
+      error: err.message
+    });
+  }
+};
+
+
+// Add this test function
+exports.testTwilioConnection = async (req, res) => {
+  try {
+    // Test basic Twilio connection
+    const account = await client.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
+    console.log('Twilio connection successful:', account.friendlyName);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Twilio connection successful',
+      accountName: account.friendlyName
+    });
+  } catch (err) {
+    console.error('Twilio connection failed:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Twilio connection failed',
       error: err.message
     });
   }

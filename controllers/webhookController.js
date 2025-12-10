@@ -73,25 +73,25 @@ exports.sendNotifications = async (req, res) => {
 
 
     // 2. Send WhatsApp message
-    // const waMessage = await client.messages.create({
-    //   from: process.env.TWILIO_WHATSAPP_FROM,
-    //   to: `whatsapp:${toPhoneNumber}`,
-    //   contentSid: 'HXdcfbb85c964bd3907682d35dae7bf389',
-    //   contentVariables: JSON.stringify({ "1": formattedStatus.toString() }),
-    // });
+    const waMessage = await client.messages.create({
+      from: process.env.TWILIO_WHATSAPP_FROM,
+      to: `whatsapp:${toPhoneNumber}`,
+      contentSid: 'HX11b1bdffb45db6d99db97612ff6da6c7',
+      contentVariables: JSON.stringify({ "1": user?.content?.factory_name, "2": orderId, "3": formattedStatus.toString()  }),
+    });
 
-    // // 3. Wait for a few seconds and check status
-    // await new Promise(resolve => setTimeout(resolve, 4000)); // 4-second delay
-    // const statusCheck = await client.messages(waMessage.sid).fetch();
+    // 3. Wait for a few seconds and check status
+    await new Promise(resolve => setTimeout(resolve, 4000)); // 4-second delay
+    const statusCheck = await client.messages(waMessage.sid).fetch();
 
-    // // 4. If WhatsApp failed or undelivered, send SMS instead
-    // if (["failed", "undelivered"].includes(statusCheck.status)) {
+    // 4. If WhatsApp failed or undelivered, send SMS instead
+    if (["failed", "undelivered"].includes(statusCheck.status)) {
       await client.messages.create({
         body: `${formattedStatus.toString()}. Order Status has been updated!`,
         from: '+17276155600',
         to: `+${toPhoneNumber}`
       });
-    // }
+    }
 
     return res.status(201).json({
       success: true,

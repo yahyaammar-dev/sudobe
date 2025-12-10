@@ -22,7 +22,7 @@ function normalizeKey(key) {
 const keyMapping = {
   "flc_quantity_20_ft": "Flc Quantity 20 FT",
   "flc_quantity_40_ft_hc": "Flc Quantity 40 FT HC",
-  "expiry_date": "Expiry Date",
+  "expiry_date": "Expiry Date (Months)",
   "lead_time_min_days": "Lead Time Min Days",
   "lead_time_max_days": "Lead Time Max Days",
   "more_details": "More Details"
@@ -30,12 +30,13 @@ const keyMapping = {
 
 exports.transformProducts = (products) => {
   const transform = (product) => {
+    console.log(product)
     const base = {
       id: product?.id,
       name: product.name || null,
       description: product.description || null,
       images: Array.isArray(product?.images)
-        ? product.images.map(img => img?.file?.url).filter(Boolean)
+        ? product.images.map(img => img?.file?.url || img?.url).filter(Boolean)
         : [],
       price: product.price || null,
       unit_quantity: product.content?.unit_quantity || null,
@@ -60,7 +61,7 @@ exports.transformProducts = (products) => {
 
         const formattedValues = option.values.map((value) => {
           const flat = {};
-          const details = {};
+          let details = {};
 
           for (const [key, val] of Object.entries(value)) {
             const prettyKey = prettifyKey(key);
@@ -83,7 +84,6 @@ exports.transformProducts = (products) => {
               details[prettyKey] = val;
             }
           }
-
           flat["product_details"] = details;
           return flat;
         });
@@ -109,7 +109,7 @@ exports.transformProducts = (products) => {
           if (normKey === 'weight' && Array.isArray(val) && val.length > 0) {
             const weightObj = val[0];
             if (weightObj.value != null && weightObj.unit) {
-              details["Weight"] = `${weightObj.value} ${weightObj.unit}`;
+              details["Weight (Carton)"] = `${weightObj.value} ${weightObj.unit}`;
             }
             continue;
           }
@@ -148,10 +148,10 @@ exports.transformProducts = (products) => {
           if (normKey === 'flc_quantity' && Array.isArray(val) && val.length > 0) {
             const flcObj = val[0];
             if (flcObj["20_ft_"] != null) {
-              details["Flc Quantity 20 FT"] = flcObj["20_ft_"];
+              details["Flc Quantity 20 FT (Carton)"] = flcObj["20_ft_"];
             }
             if (flcObj["40_ft_hc"] != null) {
-              details["Flc Quantity 40 FT HC"] = flcObj["40_ft_hc"];
+              details["Flc Quantity 40 FT HC (Carton)"] = flcObj["40_ft_hc"];
             }
             continue;
           }
@@ -159,10 +159,15 @@ exports.transformProducts = (products) => {
           // Handle other fields using mapping or prettify
           if (keyMapping[normKey]) {
             details[keyMapping[normKey]] = val;
-          } else if (!['factory', 'unit_quantity', 'unit_quantity_fr', 'minimum_quantity', 'is_new', 'featured'].includes(normKey)) {
-            // Skip fields that are already handled in base object
+          } else if (!['factory', 'unit_quantity', 'unit_quantity_fr', 'minimum_quantity', 'is_new', 'featured', 'weight_value', 'weight_unit', 'carton_length', 'carton_width', 'carton_height', 'dimension_unit', 'min_days', 'max_days'].includes(normKey)) {
+            // Skip fields that are already handled in base object or should be hidden
             details[prettifyKey(rawKey)] = val;
           }
+        }
+
+        // Add unit quantity to product_details
+        if (content.unit_quantity != null) {
+          details["Unit per carton"] = content.unit_quantity;
         }
 
         base.product_details = details;

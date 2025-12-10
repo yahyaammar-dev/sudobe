@@ -6,6 +6,7 @@ const { transformProducts } = require('../helpers/functions');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
+const axios = require('axios');
 
 exports.updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
@@ -23,7 +24,7 @@ exports.updateOrderStatus = async (req, res) => {
         const validStatuses = [
             'order_placed',
             'payment_required',
-            'pending_payment',
+            'payment_pending',
             'payment_received',
             'order_inspected',
             'order_shipped',
@@ -139,7 +140,8 @@ exports.getOrderDetails = async (req, res) => {
         // Step 4: Inject factory info into each item
         const itemsWithFactory = order.items.map(item => {
             const factoryId = item.product?.content?.factory_id;
-            const updatedProduct = transformProducts(item.product)
+            // Add null check before calling transformProducts
+            const updatedProduct = item.product ? transformProducts(item.product) : null;
             return {
                 ...item,
                 product: updatedProduct,
@@ -321,6 +323,229 @@ exports.updateOrderDocuments = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
+        });
+    }
+};
+
+exports.calculateLoad = async (req, res) => {
+    try {
+        const { cartId } = req.body;
+
+        if (!cartId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cart ID is required'
+            });
+        }
+
+        // Step 1: Fetch cart with items and product details
+        const cart = await swell.get(`/carts/${cartId}`, {
+            expand: ['items.product', 'items.variant']
+        });
+
+        if (!cart || !cart.items || cart.items.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found or empty'
+            });
+        }
+
+        console.log('Cart fetched:', cart);
+
+        // Step 2: Process cart items and build the Load Calculator request
+        const items = [];
+        let itemIndex = 1;
+
+        for (const cartItem of cart.items) {
+            const quantity = cartItem.quantity;
+            
+            // Fetch full product details
+            const productId = cartItem.product_id;
+            const variantId = cartItem.variant_id;
+            
+            console.log(`Fetching product details for: ${productId}`);
+            
+            let product;
+            let variant;
+            
+            try {
+                // Fetch the complete product with all details
+                product = await swell.get(`/products/${productId}`);
+                console.log('Full product data:', JSON.stringify(product, null, 2));
+                
+                // If there's a variant, fetch it separately
+                if (variantId && product.variants) {
+                    variant = product.variants.results?.find(v => v.id === variantId);
+                    console.log('Variant data:', JSON.stringify(variant, null, 2));
+                }
+            } catch (error) {
+                console.error(`Failed to fetch product ${productId}:`, error.message);
+                continue;
+            }
+
+            // Get dimensions and weight from variant or product
+            let length = 0, width = 0, height = 0, weight = 0;
+
+            if (variant) {
+                // Get from variant
+                const dimensions = variant.carton_dimensions_cm_?.split(' x ').map(d => parseFloat(d.trim()));
+                if (dimensions && dimensions.length === 3) {
+                    length = dimensions[0] * 10; // Convert cm to mm
+                    width = dimensions[1] * 10;
+                    height = dimensions[2] * 10;
+                }
+                weight = variant.shipment_weight || 0;
+            } else if (product) {
+                // Get from product content
+                const dimensionsArray = product.content?.dimensions;
+                if (dimensionsArray && dimensionsArray.length > 0) {
+                    const dim = dimensionsArray[0];
+                    length = (dim.depth || 0) * 10; // Convert cm to mm
+                    width = (dim.width || 0) * 10;
+                    height = (dim.height || 0) * 10;
+                }
+                
+                const weightArray = product.content?.weight;
+                if (weightArray && weightArray.length > 0) {
+                    weight = weightArray[0].value || 0;
+                }
+            }
+
+            // Skip items without dimensions
+            if (length === 0 || width === 0 || height === 0) {
+                console.warn(`Skipping item ${productId} - missing dimensions`);
+                continue;
+            }
+
+            items.push({
+                color: "#23b753",
+                index: itemIndex++,
+                name: cartItem.product_name || "Product",
+                qty: quantity.toString(),
+                type: "box",
+                uid: cartItem.product_id,
+                weight: weight,
+                size: {
+                    length: Math.round(length),
+                    width: Math.round(width),
+                    height: Math.round(height),
+                    radius: null
+                },
+                stacking: {
+                    tiltX: true,
+                    tiltY: false,
+                    layers: null,
+                    topWeight: null,
+                    height: null,
+                    fill: null,
+                    rollPlacement: null
+                }
+            });
+        }
+
+        if (items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid items with dimensions found in cart'
+            });
+        }
+
+        // Step 3: Build Load Calculator API request
+        const loadCalculatorRequest = {
+            options: {
+                lengthUnits: "mm",
+                weightUnits: "kg",
+                lengthAccuracy: 5,
+                remainsNear: true
+            },
+            groups: [
+                {
+                    name: "Cart Items",
+                    uid: 111,
+                    color: "#000",
+                    items: items
+                }
+            ],
+            containers: [],
+            autoContainers: [
+                {
+                    attr: {
+                        type: "20st"
+                    },
+                    spaces: [
+                        {
+                            length: 5890,
+                            width: 2350,
+                            height: 2390,
+                            maxWeight: 28230
+                        }
+                    ]
+                }
+            ],
+            auth: {
+                demo: false,
+                user: false
+            },
+            errorProducts: [],
+            palletCheckLoader: false
+        };
+
+        console.log('Load Calculator Request:', JSON.stringify(loadCalculatorRequest, null, 2));
+
+        // Step 4: Call SeaRates Load Calculator API
+        const apiKey = 'K-6BC266A9-006C-4F86-A839-2336C25DC3BA';
+        const response = await axios.post(
+            'https://www.searates.com/stuffing/api',
+            loadCalculatorRequest,
+            {
+                params: {
+                    key: apiKey
+                },
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log('Load Calculator Response:', response.data);
+
+        // Step 5: Process and format the response
+        const results = response.data.result || [];
+        const formattedResults = results.map(container => ({
+            containerType: container.attr.type,
+            quantity: container.qty,
+            totalItemsLoaded: container.general.itemQty,
+            totalWeight: container.general.cargoWeight,
+            totalVolume: container.general.cargoVolume,
+            volumeUtilization: (container.general.volumeRatio * 100).toFixed(2) + '%',
+            weightUtilization: (container.general.weightRatio * 100).toFixed(2) + '%',
+            containerVolume: container.attr.volume,
+            containerMaxWeight: container.attr.maxWeight,
+            itemBreakdown: container.general.items
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: 'Load calculation completed successfully',
+            data: {
+                cartId: cartId,
+                totalItems: items.reduce((sum, item) => sum + parseInt(item.qty), 0),
+                containers: formattedResults,
+                totalContainers: formattedResults.reduce((sum, c) => sum + c.quantity, 0),
+                // rawResponse: response.data // Include full response for debugging
+            }
+        });
+
+    } catch (error) {
+        console.error('Calculate load error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error response:', error.response?.data);
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to calculate load',
+            error: error.message,
+            details: error.response?.data || error
         });
     }
 };

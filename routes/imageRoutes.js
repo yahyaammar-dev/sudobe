@@ -22,14 +22,32 @@ const upload = multer({
 
 router.get("/images", async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
     const response = await swell.get(":files", {
       where: {
         content_type: { $regex: "^image/" }
       },
-      limit: 100,
+      limit: limit,
+      page: page,
       sort: { date_created: -1 }
     });
-    res.json(response.results || []);
+
+    const totalImages = response.count || 0;
+    const totalPages = Math.ceil(totalImages / limit);
+
+    res.json({
+      images: response.results || [],
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalImages: totalImages,
+        limit: limit,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    });
   } catch (error) {
     console.error("Error fetching images:", error);
     res.status(500).json({ error: "Failed to fetch images" });

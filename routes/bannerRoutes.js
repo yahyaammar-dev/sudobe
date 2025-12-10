@@ -9,6 +9,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const verifyToken = require('../middleware/auth');
 const xlsx = require('xlsx');
 const axios = require('axios');
+const fs = require('fs');
 
 // Helper function to check if URL is already a Swell URL
 function isSwellUrl(url) {
@@ -27,7 +28,6 @@ async function processImageToSwell(imageUrl) {
     }
 
     // Download the external image
-    console.log(`Downloading image: ${imageUrl}`);
     const response = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 30000, // 30 second timeout
@@ -58,7 +58,6 @@ async function processImageToSwell(imageUrl) {
     const filename = urlParts[urlParts.length - 1] || 'image.jpg';
     
     // Upload to Swell
-    console.log(`Uploading to Swell: ${filename}`);
     const uploadedFile = await swell.post('/:files', {
       filename: filename,
       content_type: contentType,
@@ -103,7 +102,6 @@ async function processProductImages(imageUrls) {
     }
     
     try {
-      console.log(`Processing image: ${cleanUrl}`);
       const processedImage = await processImageToSwell(cleanUrl);
       if (processedImage) {
         // Format according to Swell's image structure
@@ -136,14 +134,10 @@ async function processProductImages(imageUrls) {
 // Helper function to fetch categories
 async function fetchCategories() {
   try {
-    const result = await swell.get('/categories', { limit: 100 });
+    const result = await swell.get('/categories', { limit: 1000 });
 
-    // Filter to get only top-level categories (no parent_id)
-    const topLevelCategories = (result.results || []).filter(
-      (category) => !category.parent_id
-    );
-
-    return topLevelCategories;
+    // Return ALL categories including subcategories (don't filter by parent_id)
+    return result.results || [];
   } catch (error) {
     console.error('Error fetching categories:', error);
     return [];
@@ -168,17 +162,138 @@ async function fetchProducts(searchTerm = '') {
 // Helper function to fetch factories
 async function fetchFactories() {
   try {
-    const result = await swell.get('/accounts', {
+    // Fetch all accounts with a non-null factory_name, up to 1000 results
+    const { results: accounts } = await swell.get('/accounts', {
       where: {
         'content.factory_name': { $ne: null }
       },
-      limit: 100
+      limit: 1000
     });
-    return result.results || [];
+
+    // Filter out accounts where factory_name is empty/whitespace or verified is not true
+    const validFactories = (accounts || []).filter(
+      acc => acc.content?.factory_name?.trim() && acc.content?.verified
+    );
+
+    return validFactories;
   } catch (error) {
     console.error('Error fetching factories:', error);
     return [];
   }
+}
+
+
+// Helper function to find existing product by Main-UPC or ProductID
+async function findExistingProduct(mainUPC, productId = null) {
+  try {
+    // First try to find by Main-UPC in content
+    if (mainUPC) {
+      const searchByUPC = await swell.get('/products', {
+        where: {
+          'content.main_upc': mainUPC
+        },
+        limit: 1
+      });
+      
+      if (searchByUPC.results && searchByUPC.results.length > 0) {
+        return searchByUPC.results[0];
+      }
+    }
+    
+    // If not found by UPC and we have a productId, try to find by ID
+    if (productId) {
+      try {
+        const product = await swell.get(`/products/${productId}`);
+        return product;
+      } catch (error) {
+        // Product not found by ID, continue
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding existing product:', error);
+    return null;
+  }
+}
+
+// Helper function to check if an image URL is already a Swell image
+function isExistingSwellImage(imageUrl, existingProduct) {
+  if (!existingProduct || !existingProduct.images) return false;
+  
+  return existingProduct.images.some(img => 
+    img.url === imageUrl || 
+    img.file?.url === imageUrl ||
+    (img.file && img.file.url === imageUrl)
+  );
+}
+
+// Helper function to process images for existing products (avoid duplicates)
+async function processImagesForExistingProduct(imageUrls, existingProduct) {
+  const processedImages = [];
+  const existingImages = existingProduct.images || [];
+  
+  // Keep existing Swell images
+  for (const existingImg of existingImages) {
+    if (existingImg.url || existingImg.file?.url) {
+      processedImages.push({
+        id: existingImg.id,
+        file: existingImg.file,
+        url: existingImg.url || existingImg.file?.url
+      });
+    }
+  }
+  
+  // Process only new images (not already in Swell)
+  for (const imageUrl of imageUrls) {
+    const cleanUrl = imageUrl.trim();
+    
+    // Skip empty URLs
+    if (!cleanUrl || cleanUrl === '') {
+      continue;
+    }
+    
+    // Skip if this image is already in the product
+    if (isExistingSwellImage(cleanUrl, existingProduct)) {
+      console.log(`Image already exists in product: ${cleanUrl}`);
+      continue;
+    }
+    
+    // Skip if it's already a Swell URL (to avoid re-uploading)
+    if (isSwellUrl(cleanUrl)) {
+      console.log(`Image is already a Swell URL: ${cleanUrl}`);
+      // Add the Swell URL directly without re-uploading
+      processedImages.push({
+        url: cleanUrl
+      });
+      continue;
+    }
+    
+    // Basic URL validation
+    try {
+      new URL(cleanUrl);
+    } catch (urlError) {
+      console.error(`Invalid URL format: ${cleanUrl}`, urlError.message);
+      continue;
+    }
+    
+    try {
+      console.log(`Processing new image: ${cleanUrl}`);
+      const processedImage = await processImageToSwell(cleanUrl);
+      if (processedImage) {
+        processedImages.push({
+          id: processedImage.id,
+          file: processedImage.file,
+          url: processedImage.url
+        });
+        console.log(`Successfully processed new image: ${cleanUrl}`);
+      }
+    } catch (error) {
+      console.error(`Failed to process image ${cleanUrl}:`, error);
+    }
+  }
+  
+  return processedImages;
 }
 
 
@@ -200,9 +315,56 @@ router.get('/categories', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const searchTerm = req.query.search || '';
-    const products = await fetchProducts(searchTerm);
-    res.json(products);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const factoryId = req.query.factory || '';
+    
+    // Build query options
+    const queryOptions = {
+      search: searchTerm,
+      limit: limit,
+      page: page,
+      expand: ['variants', 'category', 'images']
+    };
+    
+    // If a specific factory is selected, filter by that factory
+    if (factoryId) {
+      queryOptions.where = {
+        'content.factory_id': factoryId
+      };
+    } else {
+      // If no specific factory is selected, filter by all verified factories
+      const verifiedFactories = await fetchFactories();
+      const verifiedFactoryIds = verifiedFactories.map(f => f.id);
+      
+      if (verifiedFactoryIds.length > 0) {
+        queryOptions.where = {
+          'content.factory_id': { $in: verifiedFactoryIds }
+        };
+      }
+    }
+    
+    // Fetch products with pagination
+    const result = await swell.get('/products', queryOptions);
+    
+    // Calculate total pages from count and limit
+    const totalProducts = result.count || 0;
+    const totalPages = Math.ceil(totalProducts / limit);
+    
+    // Return full result with pagination data
+    res.json({
+      results: result.results || [],
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalProducts: totalProducts,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+        limit: limit
+      }
+    });
   } catch (error) {
+    console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
   }
 });
@@ -573,7 +735,25 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         });
       }
       
-      jsonData = xlsx.utils.sheet_to_json(worksheet);
+      // Parse with header option to ensure all columns are included
+      jsonData = xlsx.utils.sheet_to_json(worksheet, { 
+        header: 1, // Use first row as header
+        defval: '' // Default value for empty cells
+      });
+      
+      // Convert to object format with proper headers
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
+        const dataRows = jsonData.slice(1);
+        
+        jsonData = dataRows.map(row => {
+          const obj = {};
+          headers.forEach((header, index) => {
+            obj[header] = row[index] || '';
+          });
+          return obj;
+        });
+      }
       
       if (!jsonData || jsonData.length === 0) {
         return res.status(400).json({
@@ -601,6 +781,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     ];
     
     const optionalColumns = [
+      'ProductID',
       'ProductNameFR',
       'ProductDescriptionEN',
       'ProductDescriptionFR',
@@ -630,9 +811,10 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       'TagsFR',
       'VariantType',
       'VariantValue',
-      'Variant Price',
+      'VariantPrice',
       'VariantUPC',
-      'VariantID'
+      'VariantID',
+      'UnitPerCarton'
     ];
 
     // Validate template structure
@@ -640,16 +822,38 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     const firstRow = jsonData[0];
     const availableColumns = Object.keys(firstRow);
     
+    // Add debugging to see what's in the first row
+    console.log('First row data:', firstRow);
+    console.log('Available columns:', availableColumns);
+    
+    // Filter out empty columns (__EMPTY, __EMPTY_1, etc.)
+    const validColumns = availableColumns.filter(col => 
+      !col.startsWith('__EMPTY') && 
+      col !== undefined && 
+      col !== null &&
+      col.trim() !== '' // Add this to filter out empty strings
+    );
+    
+    console.log('Valid columns after filtering:', validColumns);
+    
     // Check for required columns
     for (const requiredCol of requiredColumns) {
-      if (!availableColumns.includes(requiredCol)) {
-        templateErrors.push(`Missing required column: ${requiredCol}`);
+      if (!validColumns.includes(requiredCol)) {
+        // Check if the column exists but is empty in all rows
+        const columnExistsInData = jsonData.some(row => row.hasOwnProperty(requiredCol));
+        
+        if (columnExistsInData) {
+          // Column exists but is empty - this is acceptable for optional data
+          console.log(`Column ${requiredCol} exists but is empty in all rows - this is acceptable`);
+        } else {
+          templateErrors.push(`Missing required column: ${requiredCol}`);
+        }
       }
     }
     
     // Check for unexpected columns (not in required or optional)
     const allValidColumns = [...requiredColumns, ...optionalColumns];
-    for (const col of availableColumns) {
+    for (const col of validColumns) {
       if (!allValidColumns.includes(col)) {
         templateErrors.push(`Unexpected column found: ${col}. Please check the template format.`);
       }
@@ -660,8 +864,9 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         success: false,
         error: 'Template validation failed',
         template_errors: templateErrors,
-        available_columns: availableColumns,
-        required_columns: requiredColumns
+        available_columns: validColumns,
+        required_columns: requiredColumns,
+        filtered_empty_columns: availableColumns.filter(col => col.startsWith('__EMPTY'))
       });
     }
 
@@ -708,7 +913,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         firstRowErrors.push('ProductNameEN is required');
       }
       
-      if (!firstRow['Price'] || isNaN(parseFloat(firstRow['Price']))) {
+      if (firstRow['Price'] && isNaN(parseFloat(firstRow['Price']))) {
         firstRowErrors.push('Price must be a valid number');
       }
       
@@ -768,6 +973,10 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       if (firstRow['Quantity40-FT-HC'] && isNaN(parseInt(firstRow['Quantity40-FT-HC']))) {
         firstRowErrors.push('Quantity40-FT-HC must be a valid integer');
       }
+
+      if (firstRow['UnitPerCarton'] && isNaN(parseInt(firstRow['UnitPerCarton']))) {
+        firstRowErrors.push('UnitPerCarton must be a valid integer');
+      }
       
       if (firstRowErrors.length > 0) {
         dataErrors.push({
@@ -795,8 +1004,8 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             variantErrors.push('VariantType is required when VariantValue is provided');
           }
           
-          if (variantRow['Variant Price'] && isNaN(parseFloat(variantRow['Variant Price']))) {
-            variantErrors.push('Variant Price must be a valid number');
+          if (variantRow['VariantPrice'] && isNaN(parseFloat(variantRow['VariantPrice']))) {
+            variantErrors.push('VariantPrice must be a valid number');
           }
           
           // Validate numeric fields for variants
@@ -834,6 +1043,10 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           
           if (variantRow['Quantity40-FT-HC'] && isNaN(parseInt(variantRow['Quantity40-FT-HC']))) {
             variantErrors.push('Quantity40-FT-HC must be a valid integer');
+          }
+
+          if (variantRow['UnitPerCarton'] && isNaN(parseInt(variantRow['UnitPerCarton']))) {
+            variantErrors.push('UnitPerCarton must be a valid integer');
           }
           
           if (variantErrors.length > 0) {
@@ -919,9 +1132,11 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
               optionValues[row.VariantType] = [];
             }
             
+            console.log("Variant carton dimension is:: " , `${row.CartonLength} x ${row.CartonWidth} x ${row.CartonHeight}`)
+
             optionValues[row.VariantType].push({
               name: row.VariantValue,
-              price: parseFloat(row['Variant Price']) || parseFloat(row.Price) || 0,
+              price: row['VariantPrice'] ? parseFloat(row['VariantPrice']) : 0,
               upc: row.VariantUPC || row['Main-UPC'],
               id: row.VariantID,
               shipment_weight: parseFloat(row.WeightValu) || 0,
@@ -956,21 +1171,23 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           active: true,
           category_id: mainRow.CategoryID,  
           images: processedImages, // Use the processed images
+          $locale: {
+            'en-US': {
+              name: mainRow.ProductNameEN,
+              description: mainRow.ProductDescriptionEN,
+              meta_title: mainRow.PageTitelEn,
+              meta_description: mainRow.MetaDescriptionEN,
+              tags: mainRow.TagsEn ? mainRow.TagsEn.split(',').map(tag => tag.trim()) : []
+            },
+            'fr': {
+              name: mainRow.ProductNameFR,
+              description: mainRow.ProductDescriptionFR,
+              meta_title: mainRow.PageTitelFR,
+              meta_description: mainRow.MetaDescriptionFR,
+              tags: mainRow.TagsFR ? mainRow.TagsFR.split(',').map(tag => tag.trim()) : []
+            }
+          },
           content: {
-            // English content
-            name_en: mainRow.ProductNameEN,
-            description_en: mainRow.ProductDescriptionEN,
-            page_title_en: mainRow.PageTitelEn,
-            meta_description_en: mainRow.MetaDescriptionEN,
-            tags_en: mainRow.TagsEn,
-            
-            // French content
-            name_fr: mainRow.ProductNameFR,
-            description_fr: mainRow.ProductDescriptionFR,
-            page_title_fr: mainRow.PageTitelFR,
-            meta_description_fr: mainRow.MetaDescriptionFR,
-            tags_fr: mainRow.TagsFR,
-            
             // Product details
             main_upc: mainRow['Main-UPC'],
             factory_name: mainRow.FactoryName,
@@ -1024,6 +1241,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             ],
             unit_quantity: mainRow.UnitQuantity,
             unit_quantity_fr: mainRow.UnitQuantityFR,
+            unit_quantity: mainRow.UnitPerCarton
           }
         };
 
@@ -1035,8 +1253,75 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           }));
         }
 
-        const createdProduct = await swell.post('/products', productData);
-        createdProducts.push(createdProduct);
+        // Check if product already exists
+        const existingProduct = await findExistingProduct(mainRow['Main-UPC'], mainRow['ProductID']);
+
+        if (existingProduct) {
+          
+          // Process images for existing product (avoid duplicates)
+          const processedImages = await processImagesForExistingProduct(uniqueImages, existingProduct);
+          
+          // Update productData with processed images
+          productData.images = processedImages;
+          
+          // Update existing product
+          try {
+            const updatedProduct = await swell.put(`/products/${existingProduct.id}`, productData);
+            createdProducts.push({
+              ...updatedProduct,
+              action: 'updated',
+              originalId: existingProduct.id
+            });
+            console.log(`Successfully updated product: ${existingProduct.id}`);
+          } catch (updateError) {
+            console.error(`Error updating product ${existingProduct.id}:`, updateError);
+            errors.push({
+              mainUPC: mainUPC,
+              error: `Failed to update existing product: ${updateError.message}`,
+              rows: rows.length
+            });
+          }
+        } else {
+          console.log(`Creating new product with Main-UPC: ${mainRow['Main-UPC']}`);
+          
+          // Process images normally for new products
+          console.log(`Processing ${uniqueImages.length} images for new product ${mainUPC}`);
+          const processedImages = await processProductImages(uniqueImages);
+          console.log(`Successfully processed ${processedImages.length} images`);
+          
+          // Update productData with processed images
+          productData.images = processedImages;
+          
+          // Create new product
+          try {
+            const createdProduct = await swell.post('/products', productData);
+            
+            // Check if the response contains errors
+            if (createdProduct.errors && Object.keys(createdProduct.errors).length > 0) {
+              console.error(`Product creation failed with errors:`, createdProduct.errors);
+              errors.push({
+                mainUPC: mainUPC,
+                error: `Failed to create product: ${JSON.stringify(createdProduct.errors)}`,
+                rows: rows.length,
+                swellErrors: createdProduct.errors
+              });
+            } else {
+              // Only add to createdProducts if there are no errors
+              createdProducts.push({
+                ...createdProduct,
+                action: 'created'
+              });
+              console.log(`Successfully created new product: ${createdProduct.id}`);
+            }
+          } catch (createError) {
+            console.error(`Error creating product:`, createError);
+            errors.push({
+              mainUPC: mainUPC,
+              error: `Failed to create new product: ${createError.message}`,
+              rows: rows.length
+            });
+          }
+        }
 
       } catch (productError) {
         console.error(`Error creating product group ${mainUPC}:`, productError);
@@ -1048,13 +1333,21 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       }
     }
 
+    // Determine overall success based on whether there are any errors
+    const hasErrors = errors.length > 0;
+    const successCount = createdProducts.length;
+    
     res.json({
-      success: true,
-      message: `Successfully processed ${createdProducts.length} product groups from Excel`,
+      success: !hasErrors,
+      message: hasErrors 
+        ? `Import completed with ${errors.length} errors. ${successCount} products processed successfully.`
+        : `Successfully processed ${successCount} product groups from Excel`,
       products: createdProducts,
-      total_processed: createdProducts.length,
+      total_processed: successCount,
       total_groups: Object.keys(productGroups).length,
       total_rows: jsonData.length,
+      created_count: createdProducts.filter(p => p.action === 'created').length,
+      updated_count: createdProducts.filter(p => p.action === 'updated').length,
       errors: errors.length > 0 ? errors : undefined
     });
 
@@ -1071,14 +1364,48 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
 // Export products to Excel
 router.get('/products/export', async (req, res) => {
   try {
-    // Fetch all products from Swell
-    const productsResponse = await swell.get('/products', {
-      limit: 1000, // Adjust limit as needed
-      expand: ['category', 'images']
+
+    // Fetch products in both English and French locales
+    const [productsResponseEN, productsResponseFR] = await Promise.all([
+      swell.get('/products?$locale=en', {
+        limit: 1000,
+        expand: ['category', 'images', 'variants']
+      }),
+      swell.get('/products?$locale=fr', {
+        limit: 1000,
+        expand: ['category', 'images', 'variants']
+      })
+    ]);
+
+    const productsEN = productsResponseEN.results || [];
+    const productsFR = productsResponseFR.results || [];
+
+
+    // Merge products from both locales by product ID
+    const productsMap = new Map();
+    
+    // Add English products
+    productsEN.forEach(product => {
+      productsMap.set(product.id, {
+        ...product,
+        en_data: product
+      });
+    });
+    
+    // Merge with French products
+    productsFR.forEach(product => {
+      if (productsMap.has(product.id)) {
+        productsMap.get(product.id).fr_data = product;
+      } else {
+        productsMap.set(product.id, {
+          ...product,
+          fr_data: product
+        });
+      }
     });
 
-    const products = productsResponse.results || [];
-    
+    const products = Array.from(productsMap.values());
+
     if (products.length === 0) {
       return res.status(404).json({
         success: false,
@@ -1112,14 +1439,12 @@ router.get('/products/export', async (req, res) => {
         });
         
         (categoriesResponse.results || []).forEach(category => {
-          console.log("Category is::", category);
           categoryMap[category.id] = category.name;
         });
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
     }
-
 
 
     // Fetch all factories in bulk
@@ -1162,22 +1487,30 @@ router.get('/products/export', async (req, res) => {
       const factoryId = product.content?.factory_id || '';
       const factoryName = factoryId ? factoryMap[factoryId] || '' : '';
 
-      // Get main product data
+      // Get main product data from both locales
+      const productEN = product.en_data || product;
+      const productFR = product.fr_data || product;
+      
       const mainRow = {
         'Main-UPC': product.content?.main_upc || product.id,
-        'ProductID': product.id, // Add the Swell product ID
-        'ProductNameEN': product.content?.name_en || product.name || '',
-        'ProductNameFR': product.content?.name_fr || '',
-        'Price': product.price || 0,
-        'OldPrice': product.sale_price || '',
-        'CategoryID': categoryId,
-        'CategoryName': categoryName,
+        'ProductID': product.id, // Add the Swell product ID after Main-UPC
         'FactoryName': factoryName,
         'FactoryID': factoryId,
-        'ProductDescriptionEN': product.content?.description_en || product.description || '',
-        'ProductDescriptionFR': product.content?.description_fr || '',
+        'ProductNameEN': productEN.content?.name_en || productEN.name || '',
+        'ProductNameFR': productFR.content?.name_fr || productFR.name || '',
         'Slug': product.slug || '',
-        'Images': product.images?.map(img => img.file?.url || img.url).filter(Boolean).join(',') || '',
+        'ProductDescriptionEN': productEN.content?.description_en || productEN.description || '',
+        'ProductDescriptionFR': productFR.content?.description_fr || productFR.description || '',
+        'PageTitelEn': productEN.meta_title || '',
+        'PageTitelFR': productFR.meta_title || '',
+        'MetaDescriptionEN': productEN.meta_description || '',
+        'MetaDescriptionFR': productFR.meta_description || '',
+        'CategoryName': categoryName,
+        'CategoryID': categoryId,
+        'TagsEn': productEN.content?.tags_en || '',
+        'TagsFR': productFR.content?.tags_fr || '',
+        'Price': product.price || 0,
+        'OldPrice': product.sale_price || '',
         'WeightValu': product.content?.weight_value || '',
         'WeightUnit': product.content?.weight_unit || '',
         'CartonLength': product.content?.carton_length || '',
@@ -1189,41 +1522,102 @@ router.get('/products/export', async (req, res) => {
         'Quantity20-FT': product.content?.flc_quantity?.[0]?.['20_ft_'] || '',
         'Quantity40-FT-HC': product.content?.flc_quantity?.[0]?.['40_ft_hc'] || '',
         'MinmumQuantity': product.content?.minimum_quantity || '',
-        'UnitQuantity': product.content?.unit_quantity || '',
+        'UnitPerCarton': product.content?.unit_quantity || '',
         'UnitQuantityFR': product.content?.unit_quantity_fr || '',
         'ExpiryDate': product.content?.expiry_date || '',
-        'PageTitelEn': product.content?.page_title_en || '',
-        'PageTitelFR': product.content?.page_title_fr || '',
-        'MetaDescriptionEN': product.content?.meta_description_en || '',
-        'MetaDescriptionFR': product.content?.meta_description_fr || '',
-        'TagsEn': product.content?.tags_en || '',
-        'TagsFR': product.content?.tags_fr || ''
+        'Images': product.images?.map(img => img.file?.url || img.url).filter(Boolean).join(',') || ''
       };
-
-      // If product has variants/options, create additional rows for each variant
-      if (product.options && product.options.length > 0) {
+      // If product has variants, create additional rows for each variant
+      if (product.variants && product.variants.length > 0) {
+        for (const variant of product.variants) {
+          const variantRow = {
+            'Main-UPC': variant.upc || mainRow['Main-UPC'],
+            'ProductID': product.id,
+            'VariantID': variant.id || '',
+            'FactoryName': mainRow.FactoryName,
+            'FactoryID': mainRow.FactoryID,
+            'ProductNameEN': mainRow.ProductNameEN,
+            'ProductNameFR': mainRow.ProductNameFR,
+            'Slug': mainRow.Slug,
+            'ProductDescriptionEN': mainRow.ProductDescriptionEN,
+            'ProductDescriptionFR': mainRow.ProductDescriptionFR,
+            'PageTitelEn': mainRow.PageTitelEn,
+            'PageTitelFR': mainRow.PageTitelFR,
+            'MetaDescriptionEN': mainRow.MetaDescriptionEN,
+            'MetaDescriptionFR': mainRow.MetaDescriptionFR,
+            'CategoryName': mainRow.CategoryName,
+            'CategoryID': mainRow.CategoryID,
+            'TagsEn': mainRow.TagsEn,
+            'TagsFR': mainRow.TagsFR,
+            'Price': mainRow.Price,
+            'VariantType': variant.variant_type || '', // Assuming variant_type is the type
+            'VariantValue': variant.name || '',
+            'VariantPrice': variant.price || mainRow.Price,
+            'VariantUPC': variant.upc || mainRow['Main-UPC'],
+            'UnitPerCarton': mainRow.UnitPerCarton,
+            'Quantity20-FT': variant.flc_quantity?.[0]?.['20_ft_'] || mainRow['Quantity20-FT'],
+            'Quantity40-FT-HC': variant.flc_quantity?.[0]?.['40_ft_hc'] || mainRow['Quantity40-FT-HC'],
+            'WeightValu': variant.shipment_weight || mainRow.WeightValu,
+            'WeightUnit': mainRow.WeightUnit,
+            'CartonLength': variant.carton_dimensions_cm_?.split(' x ')[0] || mainRow.CartonLength,
+            'CartonWidth': variant.carton_dimensions_cm_?.split(' x ')[1] || mainRow.CartonWidth,
+            'CartonHeight': variant.carton_dimensions_cm_?.split(' x ')[2] || mainRow.CartonHeight,
+            'DimensionUnit': mainRow.DimensionUnit,
+            'MinDays': variant.lead_time?.[0]?.min_days || mainRow.MinDays,
+            'MaxDays': variant.lead_time?.[0]?.max_days || mainRow.MaxDays,
+            'MinmumQuantity': variant.minimum_quantity || mainRow.MinmumQuantity,
+            'UnitQuantity': variant.unit_quantity || mainRow.UnitQuantity,
+            'UnitQuantityFR': variant.unit_quantity_fr || mainRow.UnitQuantityFR,
+            'ExpiryDate': variant.expiry_date || mainRow.ExpiryDate,
+            'Images': mainRow.Images
+          };
+          excelData.push(variantRow);
+        }
+      } else if (product.options && product.options.length > 0) {
+        // Fallback to options if variants are not available
         for (const option of product.options) {
           if (option.values && option.values.length > 0) {
             for (const variant of option.values) {
               const variantRow = {
-                ...mainRow,
+                'Main-UPC': variant.upc || mainRow['Main-UPC'],
+                'ProductID': product.id,
+                'VariantID': variant.id || '',
+                'FactoryName': mainRow.FactoryName,
+                'FactoryID': mainRow.FactoryID,
+                'ProductNameEN': mainRow.ProductNameEN,
+                'ProductNameFR': mainRow.ProductNameFR,
+                'Slug': mainRow.Slug,
+                'ProductDescriptionEN': mainRow.ProductDescriptionEN,
+                'ProductDescriptionFR': mainRow.ProductDescriptionFR,
+                'PageTitelEn': mainRow.PageTitelEn,
+                'PageTitelFR': mainRow.PageTitelFR,
+                'MetaDescriptionEN': mainRow.MetaDescriptionEN,
+                'MetaDescriptionFR': mainRow.MetaDescriptionFR,
+                'CategoryName': mainRow.CategoryName,
+                'CategoryID': mainRow.CategoryID,
+                'TagsEn': mainRow.TagsEn,
+                'TagsFR': mainRow.TagsFR,
+                'Price': mainRow.Price,
                 'VariantType': option.name || '',
                 'VariantValue': variant.name || '',
-                'Variant Price': variant.price || mainRow.Price,
+                'VariantPrice': variant.price || mainRow.Price,
                 'VariantUPC': variant.upc || mainRow['Main-UPC'],
-                'VariantID': variant.id || '',
+                'UnitPerCarton': mainRow.UnitPerCarton,
+                'Quantity20-FT': variant.flc_quantity?.[0]?.['20_ft_'] || mainRow['Quantity20-FT'],
+                'Quantity40-FT-HC': variant.flc_quantity?.[0]?.['40_ft_hc'] || mainRow['Quantity40-FT-HC'],
                 'WeightValu': variant.shipment_weight || mainRow.WeightValu,
+                'WeightUnit': mainRow.WeightUnit,
                 'CartonLength': variant.carton_dimensions_cm_?.split(' x ')[0] || mainRow.CartonLength,
                 'CartonWidth': variant.carton_dimensions_cm_?.split(' x ')[1] || mainRow.CartonWidth,
                 'CartonHeight': variant.carton_dimensions_cm_?.split(' x ')[2] || mainRow.CartonHeight,
+                'DimensionUnit': mainRow.DimensionUnit,
                 'MinDays': variant.lead_time?.[0]?.min_days || mainRow.MinDays,
                 'MaxDays': variant.lead_time?.[0]?.max_days || mainRow.MaxDays,
-                'Quantity20-FT': variant.flc_quantity?.[0]?.['20_ft_'] || mainRow['Quantity20-FT'],
-                'Quantity40-FT-HC': variant.flc_quantity?.[0]?.['40_ft_hc'] || mainRow['Quantity40-FT-HC'],
                 'MinmumQuantity': variant.minimum_quantity || mainRow.MinmumQuantity,
                 'UnitQuantity': variant.unit_quantity || mainRow.UnitQuantity,
                 'UnitQuantityFR': variant.unit_quantity_fr || mainRow.UnitQuantityFR,
-                'ExpiryDate': variant.expiry_date || mainRow.ExpiryDate
+                'ExpiryDate': variant.expiry_date || mainRow.ExpiryDate,
+                'Images': mainRow.Images
               };
               excelData.push(variantRow);
             }
@@ -1257,7 +1651,7 @@ router.get('/products/export', async (req, res) => {
       { wch: 100 }, // Images
       { wch: 15 }, // VariantType
       { wch: 20 }, // VariantValue
-      { wch: 10 }, // Variant Price
+      { wch: 10 }, // VariantPrice
       { wch: 15 }, // VariantUPC
       { wch: 15 }, // VariantID
       { wch: 10 }, // WeightValu
@@ -1309,5 +1703,639 @@ router.get('/products/export', async (req, res) => {
     });
   }
 });
+
+// Get list of factories for export filters
+router.get('/products/factories', async (req, res) => {
+  try {
+    // Fetch all products to get unique factory IDs
+    const productsResponse = await swell.get('/products', {
+      limit: 1000,
+      where: {
+        'content.factory_id': { $ne: null }
+      }
+    });
+
+    const products = productsResponse.results || [];
+    const factoryIds = [...new Set(products.map(p => p.content?.factory_id).filter(Boolean))];
+
+    if (factoryIds.length === 0) {
+      return res.json({
+        success: true,
+        factories: []
+      });
+    }
+
+    // Fetch factory details
+    const factoriesResponse = await swell.get('/accounts', {
+      where: { id: { $in: factoryIds } },
+      limit: factoryIds.length
+    });
+
+    const factories = (factoriesResponse.results || []).map(factory => ({
+      id: factory.id,
+      name: factory.name || factory.id
+    }));
+
+    res.json({
+      success: true,
+      factories: factories.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    });
+  } catch (error) {
+    console.error('Error fetching factories:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch factories',
+      details: error.message
+    });
+  }
+});
+
+
+
+
+// Export products to Word document filtered by factory
+router.get('/products/export-pdf', async (req, res) => {
+  try {
+    const { factoryIds, factoryId } = req.query; // Support both single and multiple
+
+    // Handle both old single factoryId and new multiple factoryIds
+    let factoryIdArray = [];
+    if (factoryIds) {
+      factoryIdArray = factoryIds.split(',').map(id => id.trim()).filter(Boolean);
+    } else if (factoryId) {
+      factoryIdArray = [factoryId];
+    }
+
+    if (factoryIdArray.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one Factory ID is required'
+      });
+    }
+
+    // Fetch factory details for all selected factories
+    const factoriesMap = {};
+    for (const fid of factoryIdArray) {
+      try {
+        const factory = await swell.get(`/accounts/${fid}`);
+        factoriesMap[fid] = factory?.name || fid;
+      } catch (error) {
+        console.error(`Error fetching factory ${fid}:`, error);
+        factoriesMap[fid] = fid;
+      }
+    }
+
+    // Fetch products for all selected factories
+    const productsResponse = await swell.get('/products', {
+      limit: 1000,
+      where: {
+        'content.factory_id': { $in: factoryIdArray }
+      },
+      expand: ['images']
+    });
+
+    const products = productsResponse.results || [];
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No products found for the selected factories'
+      });
+    }
+
+    // Group products by factory
+    const productsByFactory = {};
+    products.forEach(product => {
+      const factoryId = product.content?.factory_id;
+      if (!factoryId) return;
+      
+      if (!productsByFactory[factoryId]) {
+        productsByFactory[factoryId] = [];
+      }
+      productsByFactory[factoryId].push(product);
+    });
+
+    const factoryNames = factoryIdArray.map(fid => factoriesMap[fid]);
+    const displayTitle = factoryNames.length === 1 
+      ? factoryNames[0] 
+      : `${factoryNames.length} Factories`;
+
+    // Sort factories by name for consistent display
+    const sortedFactoryIds = Object.keys(productsByFactory).sort((a, b) => {
+      return (factoriesMap[a] || a).localeCompare(factoriesMap[b] || b);
+    });
+
+    // Generate Word document using docx library
+    const { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, AlignmentType, ImageRun, Header, Footer } = require('docx');
+
+    // Read logo file
+    let logoBuffer = null;
+    const logoPath = path.join(__dirname, '../public/assets/headerlogo.jpeg');
+    try {
+      if (fs.existsSync(logoPath)) {
+        logoBuffer = fs.readFileSync(logoPath);
+      }
+    } catch (error) {
+      console.error('Error loading logo:', error);
+    }
+
+    // Build header table with logo using ImageRun directly (as per docx library docs)
+    let headerTable = null;
+    if (logoBuffer) {
+      try {
+        console.log('Creating logo image with ImageRun, buffer size:', logoBuffer.length);
+        
+        // Create ImageRun directly with the buffer data (as per docx documentation)
+        const logoImageRun = new ImageRun({
+          type: 'jpeg', // or 'jpg' - both work
+          data: logoBuffer,
+          transformation: {
+            width: 200,
+            height: 80,
+          },
+        });
+        
+        console.log('Logo ImageRun created successfully');
+        
+        // Build header table with logo
+        const headerRowsWithLogo = [
+          new TableRow({
+            children: [
+              // Left cell with company address
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: 'SODU INC.',
+                        bold: true,
+                        color: 'FFFFFF',
+                        size: 24,
+                        font: 'Arial'
+                      })
+                    ],
+                    spacing: { after: 200 }
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: '251 Little Falls drive,',
+                        color: 'FFFFFF',
+                        size: 20,
+                        font: 'Arial'
+                      })
+                    ],
+                    spacing: { after: 100 }
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: 'Wilmington, DE 19808 USA',
+                        color: 'FFFFFF',
+                        size: 20,
+                        font: 'Arial'
+                      })
+                    ]
+                  })
+                ],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: 'center',
+                shading: { fill: '0c373c' }
+              }),
+              // Right cell with logo - using ImageRun directly
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [logoImageRun],
+                    alignment: AlignmentType.RIGHT
+                  })
+                ],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: 'center',
+                shading: { fill: '0c373c' }
+              })
+            ],
+            height: { value: 2160, rule: 'exact' }
+          })
+        ];
+        
+        // Use full page width for header table (12240 twips = 8.5 inches for US Letter)
+        headerTable = new Table({
+          width: { size: 12240, type: WidthType.DXA }, // Full page width (US Letter: 8.5" = 12240 twips)
+          columnWidths: [6120, 6120], // Equal width columns (50% each = 6120 twips)
+          rows: headerRowsWithLogo
+        });
+        
+        console.log('Header table built with logo using ImageRun');
+      } catch (error) {
+        console.error('Error creating logo ImageRun:', error);
+        console.error('Error stack:', error.stack);
+        // Fallback: create header table without logo
+        // Use full page width for header table (12240 twips = 8.5 inches for US Letter)
+        headerTable = new Table({
+          width: { size: 12240, type: WidthType.DXA }, // Full page width (US Letter: 8.5" = 12240 twips)
+          columnWidths: [6120, 6120], // Equal width columns (50% each = 6120 twips)
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: 'SODU INC.',
+                          bold: true,
+                          color: 'FFFFFF',
+                          size: 24,
+                          font: 'Arial'
+                        })
+                      ],
+                      spacing: { after: 200 }
+                    }),
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: '251 Little Falls drive,',
+                          color: 'FFFFFF',
+                          size: 20,
+                          font: 'Arial'
+                        })
+                      ],
+                      spacing: { after: 100 }
+                    }),
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: 'Wilmington, DE 19808 USA',
+                          color: 'FFFFFF',
+                          size: 20,
+                          font: 'Arial'
+                        })
+                      ]
+                    })
+                  ],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  verticalAlign: 'center',
+                  shading: { fill: '0c373c' }
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: '' })]
+                    })
+                  ],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  verticalAlign: 'center',
+                  shading: { fill: '0c373c' }
+                })
+              ],
+              height: { value: 2160, rule: 'exact' }
+            })
+          ]
+        });
+      }
+    } else {
+      // Create header table without logo
+      // Use full page width for header table (12240 twips = 8.5 inches for US Letter)
+      headerTable = new Table({
+        width: { size: 12240, type: WidthType.DXA }, // Full page width (US Letter: 8.5" = 12240 twips)
+        columnWidths: [6120, 6120], // Equal width columns (50% each = 6120 twips)
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: 'SODU INC.',
+                        bold: true,
+                        color: 'FFFFFF',
+                        size: 24,
+                        font: 'Arial'
+                      })
+                    ],
+                    spacing: { after: 200 }
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: '251 Little Falls drive,',
+                        color: 'FFFFFF',
+                        size: 20,
+                        font: 'Arial'
+                      })
+                    ],
+                    spacing: { after: 100 }
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: 'Wilmington, DE 19808 USA',
+                        color: 'FFFFFF',
+                        size: 20,
+                        font: 'Arial'
+                      })
+                    ]
+                  })
+                ],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: 'center',
+                shading: { fill: '0c373c' }
+              }),
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [new TextRun({ text: '' })]
+                  })
+                ],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                verticalAlign: 'center',
+                shading: { fill: '0c373c' }
+              })
+            ],
+            height: { value: 2160, rule: 'exact' }
+          })
+        ]
+      });
+    }
+
+    // Create document paragraphs (without header table - it goes in Header component)
+    // Add 0.5 inch (720 twips) margins on both left and right to content only
+    const docElements = [
+      new Paragraph({
+        text: '',
+        spacing: { after: 400 },
+        indent: { left: 720, right: 720 }
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ 
+            text: `Products Export - ${displayTitle}`,
+            font: 'Arial',
+            size: 32,
+            bold: true,
+            color: 'c1ff72',
+            shading: { color: 'c1ff72' }
+          })
+        ],
+        heading: 'Heading1',
+        spacing: { after: 400 },
+        shading: { color: 'c1ff72' },
+        indent: { left: 720, right: 720 }
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Total Products: ', bold: true, font: 'Arial' }),
+          new TextRun({ text: String(products.length), font: 'Arial' })
+        ],
+        spacing: { after: 200 },
+        indent: { left: 720, right: 720 }
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Selected Factories: ', bold: true, font: 'Arial' }),
+          new TextRun({ text: factoryNames.join(', '), font: 'Arial' })
+        ],
+        spacing: { after: 200 },
+        indent: { left: 720, right: 720 }
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Export Date: ', bold: true, font: 'Arial' }),
+          new TextRun({ text: new Date().toLocaleDateString(), font: 'Arial' })
+        ],
+        spacing: { after: 400 },
+        indent: { left: 720, right: 720 }
+      })
+    ];
+
+    // Build table rows for all factories
+    const tableRows = [];
+    
+    // Add table header row
+    tableRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({ 
+              children: [new TextRun({ text: 'FACTORY NAME', bold: true, font: 'Arial', color: 'FFFFFF' })],
+              alignment: AlignmentType.CENTER
+            })],
+            shading: { fill: '0c373c', color: 'FFFFFF' }
+          }),
+          new TableCell({
+            children: [new Paragraph({ 
+              children: [new TextRun({ text: 'PRODUCT NAME', bold: true, font: 'Arial', color: 'FFFFFF' })],
+              alignment: AlignmentType.CENTER
+            })],
+            shading: { fill: '0c373c', color: 'FFFFFF' }
+          }),
+          new TableCell({
+            children: [new Paragraph({ 
+              children: [new TextRun({ text: 'QUANTITY PER CARTON', bold: true, font: 'Arial', color: 'FFFFFF' })],
+              alignment: AlignmentType.CENTER
+            })],
+            shading: { fill: '0c373c', color: 'FFFFFF' }
+          }),
+          new TableCell({
+            children: [new Paragraph({ 
+              children: [new TextRun({ text: 'PRICE', bold: true, font: 'Arial', color: 'FFFFFF' })],
+              alignment: AlignmentType.CENTER
+            })],
+            shading: { fill: '0c373c', color: 'FFFFFF' }
+          })
+        ]
+      })
+    );
+    
+    // Add factory sections and product rows
+    sortedFactoryIds.forEach(factoryId => {
+      const factoryProducts = productsByFactory[factoryId];
+      const factoryName = factoriesMap[factoryId];
+      
+      // Add factory header row
+      tableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ 
+                      text: `${factoryName} (${factoryProducts.length} product${factoryProducts.length !== 1 ? 's' : ''})`,
+                      bold: true,
+                      font: 'Arial'
+                    })
+                  ],
+                  alignment: AlignmentType.CENTER
+                })
+              ],
+              columnSpan: 4,
+              shading: { fill: 'c1ff72' }
+            })
+          ]
+        })
+      );
+      
+      // Add product rows for this factory
+      factoryProducts.forEach(product => {
+        const productName = product.name || 'N/A';
+        const quantityPerCarton = product.content?.unit_quantity || product.content?.unit_quantity_fr || 'N/A';
+        const price = product.price ? `$${parseFloat(product.price).toFixed(2)}` : 'N/A';
+        
+        tableRows.push(
+          new TableRow({
+            children: [
+              new TableCell({
+                children: [new Paragraph({ 
+                  children: [new TextRun({ text: factoryName, font: 'Arial' })],
+                  alignment: AlignmentType.CENTER
+                })]
+              }),
+              new TableCell({
+                children: [new Paragraph({ 
+                  children: [new TextRun({ text: productName, font: 'Arial' })],
+                  alignment: AlignmentType.CENTER
+                })]
+              }),
+              new TableCell({
+                children: [new Paragraph({ 
+                  children: [new TextRun({ text: String(quantityPerCarton), font: 'Arial' })],
+                  alignment: AlignmentType.CENTER
+                })]
+              }),
+              new TableCell({
+                children: [new Paragraph({ 
+                  children: [new TextRun({ text: price, font: 'Arial' })],
+                  alignment: AlignmentType.CENTER
+                })]
+              })
+            ]
+          })
+        );
+      });
+    });
+    
+    // Add the table to document elements with 1 inch margins on left and right
+    // Page width is 12240 twips (8.5 inches)
+    // With 1 inch (1440 twips) margins on each side: 12240 - 2880 = 9360 twips available
+    // Scale column widths proportionally: 2000, 5000, 1500, 1500 -> 1872, 4680, 1404, 1404
+    
+    // Add the product table with 0.5 inch margins on both sides
+    docElements.push(
+      new Table({
+        width: { size: 10800, type: WidthType.DXA }, // Full page width minus 1 inch total (12240 - 1440 = 10800 twips)
+        columnWidths: [2160, 5400, 1620, 1620], // Factory (20%), Product (50%), Quantity (15%), Price (15%)
+        rows: tableRows,
+        alignment: AlignmentType.LEFT,
+        indent: { size: 720, type: WidthType.DXA } // 0.5 inch left indentation
+      })
+    );
+
+    // Create footer table with two rectangles
+    // First: lime colored line (10px height)
+    // Second: green colored line (100px height, same as header color)
+    const footerTable = new Table({
+      width: { size: 12240, type: WidthType.DXA }, // Full page width
+      columnWidths: [12240], // Single column spanning full width
+      rows: [
+        // Lime colored rectangle (10px = ~200 twips)
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ text: '' })],
+              shading: { fill: '32CD32' }, // Lime color
+              width: { size: 100, type: WidthType.PERCENTAGE }
+            })
+          ],
+          height: { value: 100, rule: 'exact' } // 10px height (~200 twips)
+        }),
+        // Green colored rectangle (100px = ~2000 twips)
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ text: '' })],
+              shading: { fill: '0c373c' }, // Same green as header
+              width: { size: 30, type: WidthType.PERCENTAGE }
+            })
+          ],
+          height: { value: 500, rule: 'exact' } // 100px height (~2000 twips)
+        })
+      ]
+    });
+
+    // Create the document with proper Header component
+    // Note: Word headers have default margins, so we use full page width table
+    // The table width is set to 12240 twips (full page width) to span edge-to-edge
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: {
+            size: {
+              width: 12240, // 8.5 inches in twips (A4 width)
+              height: 15840 // 11 inches in twips (A4 height)
+            },
+            margin: {
+              top: 0,      // No margin (header handles top)
+              right: 0, 
+              bottom: 0,   // No margin (footer handles bottom)
+              left: 0,
+              header: 0,   // Header distance from edge (0 twips = 0 inches)
+              footer: 0    // Footer distance from edge (0 twips = 0 inches)
+            }
+          }
+        },
+        headers: {
+          default: new Header({
+            children: [headerTable] // Header table with full page width (12240 twips)
+          })
+        },
+        footers: {
+          default: new Footer({
+            children: [footerTable] // Footer table with lime and green rectangles
+          })
+        },
+        children: docElements
+      }]
+    });
+
+    const docToUse = doc;
+
+    // Generate the Word document buffer
+    const buffer = await Packer.toBuffer(docToUse);
+
+    // Set response headers
+    const filenameBase = factoryIdArray.length === 1
+      ? factoriesMap[factoryIdArray[0]].replace(/[^a-z0-9]/gi, '_')
+      : `${factoryIdArray.length}_factories`;
+    const filename = `products_export_${filenameBase}_${new Date().toISOString().split('T')[0]}.docx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting products to PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export products to PDF',
+      details: error.message
+    });
+  }
+});
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
 
 module.exports = router;

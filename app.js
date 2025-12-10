@@ -9,8 +9,8 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increase limit for PDF generation
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,8 +29,19 @@ app.use('/api/content', require('./routes/imageRoutes'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
+// QA Report routes
+app.use('/api/qa', require('./routes/qaRoutes'));
+
+// QC Report page route (protected)
+const verifyToken = require('./middleware/auth');
+app.get('/qa', verifyToken, (req, res) => {
+  res.sendFile(path.join(__dirname, 'qa.html'));
+});
+
 // Default route
+let index = 0 
 app.get('/', (req, res) => {
+  index++
   res.send('API is running...');
 });
 
