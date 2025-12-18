@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Permissions & Roles - SODU CMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    .sidebar {
+      background-color: #f8f9fa;
+      min-height: 100vh;
+      border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar .list-group-item {
+      border: none;
+      border-radius: 0;
+    }
+
+    .sidebar .list-group-item:hover {
+      background-color: #e9ecef;
+    }
+
+    .sidebar .list-group-item.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .sidebar .list-group-item a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      width: 100%;
+    }
+
+    .main-content {
+      padding: 20px;
+    }
+
+    .card {
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 20px;
+    }
+
+    .permission-item {
+      padding: 8px 12px;
+      margin: 4px 0;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .role-badge.super_admin {
+      background: #dc3545;
+      color: white;
+    }
+
+    .role-badge.operator {
+      background: #0d6efd;
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        min-height: auto;
+      }
+
+      .main-content {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div id="sidebar-container"></div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 col-lg-10 main-content">
+        <div id="alert-container"></div>
+        
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2><i class="bi bi-shield-lock me-2"></i>Permissions & Roles Management</h2>
+        </div>
+
+        <!-- Roles and Permissions Overview -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">Roles & Permissions</h5>
+          </div>
+          <div class="card-body">
+            <div id="rolesContainer">
+              <div class="text-center py-3">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Role Management -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Manage User Roles</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Current Role</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr>
+                    <td colspan="4" class="text-center">
+                      <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role Permissions Edit Modal -->
+  <div class="modal fade" id="editPermissionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Role Permissions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <form id="permissionsForm">
+            <input type="hidden" id="editingRoleKey">
+            <div class="mb-3">
+              <label class="form-label"><strong id="editingRoleName"></strong></label>
+              <p class="text-muted small">Select the permissions for this role</p>
+            </div>
+            <div id="permissionsCheckboxes" class="row">
+              <!-- Permissions will be populated here -->
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveRolePermissions()">Save Permissions</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role Update Modal -->
+  <div class="modal fade" id="roleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Update User Role</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="roleForm">
+            <input type="hidden" id="userId">
+            <div class="mb-3">
+              <label for="userEmail" class="form-label">User Email</label>
+              <input type="email" class="form-control" id="userEmail" readonly>
+            </div>
+            <div class="mb-3">
+              <label for="userRole" class="form-label">Role *</label>
+              <select class="form-select" id="userRole" required>
+                <option value="">Select a role...</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveUserRole()">Save Role</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Permissions Helper Script (must be loaded first) -->
+  <script src="/js/permissions.js"></script>
+  
+  <!-- Shared Sidebar Component -->
+  <script src="/js/sidebar.js"></script>
+
+  <script>
+    const API_BASE = '/permissions/api';
+    let rolesModal;
+    let roles = [];
+    let permissions = [];
+    let users = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      rolesModal = new bootstrap.Modal(document.getElementById('roleModal'));
+      loadRoles();
+      loadUsers();
+      loadPermissions();
+    });
+
+    function showAlert(message, type = 'success') {
+      const alertContainer = document.getElementById('alert-container');
+      const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+      alertContainer.innerHTML = alertHtml;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 5000);
+    }
+
+    async function loadPermissions() {
+      try {
+        const response = await fetch(`${API_BASE}/permissions/list`);
+        const result = await response.json();
+        if (result.success) {
+          permissions = result.data || [];
+        }
+      } catch (error) {
+        console.error('Error loading permissions:', error);
+      }
+    }
+
+    async function loadRoles() {
+      try {
+        const response = await fetch(`${API_BASE}/roles`);
+        const result = await response.json();
+        
+        if (result.success) {
+          roles = result.data || [];
+          renderRoles();
+        } else {
+          showAlert('Failed to load roles', 'danger');
+        }
+      } catch (error) {
+        console.error('Error loading roles:', error);
+        showAlert('Error loading roles', 'danger');
+      }
+    }
+
+    function renderRoles() {
+      const container = document.getElementById('rolesContainer');
+      
+      if (roles.length === 0) {
+        container.innerHTML = '<p class="text-muted">No roles found.</p>';
+        return;
+      }
+
+      let html = '<div class="row">';
+      
+      roles.forEach(role => {
+        const roleClass = role.key === 'super_admin' ? 'super_admin' : 'operator';
+        html += `
+          <div class="col-md-6 mb-4">
+            <div class="border rounded p-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">
+                  <span class="role-badge ${roleClass}">${role.name}</span>
+                </h6>
+                <button class="btn btn-sm btn-primary" onclick="editRolePermissions('${role.key}', '${role.name}')">
+                  <i class="bi bi-pencil"></i> Edit Permissions
+                </button>
+              </div>
+              <div class="mt-3">
+                <strong>Permissions (${role.permissions.length}):</strong>
+                <div class="mt-2" style="max-height: 300px; overflow-y: auto;">
+                  ${role.permissions.length > 0 ? role.permissions.map(perm => {
+                    const permName = perm.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    return `<div class="permission-item">${permName}</div>`;
+                  }).join('') : '<div class="text-muted">No permissions assigned</div>'}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function editRolePermissions(roleKey, roleName) {
+      document.getElementById('editingRoleKey').value = roleKey;
+      document.getElementById('editingRoleName').textContent = roleName;
+      
+      // Get current role permissions
+      const role = roles.find(r => r.key === roleKey);
+      const currentPermissions = role ? role.permissions : [];
+      
+      // Render permission checkboxes
+      const checkboxesContainer = document.getElementById('permissionsCheckboxes');
+      checkboxesContainer.innerHTML = '';
+      
+      if (permissions.length === 0) {
+        checkboxesContainer.innerHTML = '<p class="text-muted">Loading permissions...</p>';
+        loadPermissions().then(() => {
+          renderPermissionCheckboxes(currentPermissions);
+        });
+      } else {
+        renderPermissionCheckboxes(currentPermissions);
+      }
+      
+      // Show modal
+      const editModal = new bootstrap.Modal(document.getElementById('editPermissionsModal'));
+      editModal.show();
+    }
+
+    function renderPermissionCheckboxes(currentPermissions) {
+      const checkboxesContainer = document.getElementById('permissionsCheckboxes');
+      checkboxesContainer.innerHTML = '';
+      
+      // Group permissions by category
+      const categories = {
+        'Orders': permissions.filter(p => p.key.includes('order')),
+        'Customers': permissions.filter(p => p.key.includes('customer')),
+        'Factories': permissions.filter(p => p.key.includes('factory')),
+        'Shipping Rates': permissions.filter(p => p.key.includes('shipping')),
+        'Content': permissions.filter(p => p.key.includes('banner') || p.key.includes('protection') || p.key.includes('image')),
+        'Products': permissions.filter(p => p.key.includes('product')),
+        'Admin': permissions.filter(p => p.key.includes('log') || p.key.includes('manage') || p.key.includes('qa'))
+      };
+      
+      Object.entries(categories).forEach(([category, perms]) => {
+        if (perms.length === 0) return;
+        
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'col-md-6 mb-3';
+        categoryDiv.innerHTML = `
+          <div class="border rounded p-3">
+            <h6 class="mb-3">${category}</h6>
+            ${perms.map(perm => {
+              const checked = currentPermissions.includes(perm.key) ? 'checked' : '';
+              return `
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" value="${perm.key}" id="perm_${perm.key}" ${checked}>
+                  <label class="form-check-label" for="perm_${perm.key}">
+                    ${perm.name}
+                  </label>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        checkboxesContainer.appendChild(categoryDiv);
+      });
+    }
+
+    async function saveRolePermissions() {
+      const roleKey = document.getElementById('editingRoleKey').value;
+      const checkboxes = document.querySelectorAll('#permissionsCheckboxes input[type="checkbox"]:checked');
+      const selectedPermissions = Array.from(checkboxes).map(cb => cb.value);
+      
+      try {
+        const response = await fetch(`${API_BASE}/roles/${roleKey}/permissions`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ permissions: selectedPermissions })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert('Role permissions updated successfully');
+          const editModal = bootstrap.Modal.getInstance(document.getElementById('editPermissionsModal'));
+          editModal.hide();
+          loadRoles(); // Reload roles to show updated permissions
+        } else {
+          showAlert(result.message || 'Failed to update role permissions', 'danger');
+        }
+      } catch (error) {
+        console.error('Error updating role permissions:', error);
+        showAlert('Error updating role permissions', 'danger');
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await fetch(`${API_BASE}/users`);
+        const result = await response.json();
+        
+        if (result.success) {
+          users = result.data || [];
+          renderUsers();
+        } else {
+          showAlert('Failed to load users', 'danger');
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+        showAlert('Error loading users', 'danger');
+      }
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('usersTableBody');
+      
+      if (users.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="text-center text-muted">
+              No users found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = users.map(user => {
+        const roleClass = user.role === 'super_admin' ? 'super_admin' : (user.role === 'operator' ? 'operator' : 'secondary');
+        const roleName = user.role ? user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No Role';
+        
+        return `
+          <tr>
+            <td>${user.name || 'N/A'}</td>
+            <td>${user.email}</td>
+            <td>
+              ${user.role ? `<span class="role-badge ${roleClass}">${roleName}</span>` : '<span class="text-muted">No role assigned</span>'}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-primary" onclick="showRoleModal('${user.id}', '${user.email}', '${user.role || ''}')">
+                <i class="bi bi-pencil"></i> Edit Role
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function showRoleModal(userId, userEmail, currentRole) {
+      document.getElementById('userId').value = userId;
+      document.getElementById('userEmail').value = userEmail;
+      
+      // Populate role dropdown
+      const roleSelect = document.getElementById('userRole');
+      roleSelect.innerHTML = '<option value="">Select a role...</option>';
+      roles.forEach(role => {
+        const selected = role.key === currentRole ? 'selected' : '';
+        roleSelect.innerHTML += `<option value="${role.key}" ${selected}>${role.name}</option>`;
+      });
+      
+      rolesModal.show();
+    }
+
+    async function saveUserRole() {
+      const userId = document.getElementById('userId').value;
+      const role = document.getElementById('userRole').value;
+      
+      if (!role) {
+        showAlert('Please select a role', 'danger');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/users/${userId}/role`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ role })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert('User role updated successfully');
+          rolesModal.hide();
+          loadUsers();
+        } else {
+          showAlert(result.message || 'Failed to update user role', 'danger');
+        }
+      } catch (error) {
+        console.error('Error updating user role:', error);
+        showAlert('Error updating user role', 'danger');
+      }
+    }
+  </script>
+</body>
+
+</html>

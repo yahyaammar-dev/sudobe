@@ -10,6 +10,7 @@ const verifyToken = require('../middleware/auth');
 const xlsx = require('xlsx');
 const axios = require('axios');
 const fs = require('fs');
+const ActivityLogger = require('../services/activityLogger');
 
 // Helper function to check if URL is already a Swell URL
 function isSwellUrl(url) {
@@ -297,7 +298,33 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
 }
 
 
-router.get('/', verifyToken, (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
+  // Log activity: user visited content management page
+  try {
+    const userId = req.user?.id || null;
+    const userEmail = req.user?.email || null;
+    
+    if (userId) {
+      await ActivityLogger.log({
+        userId: userId,
+        userEmail: userEmail,
+        action: 'view_page',
+        resourceType: 'content_management',
+        resourceId: 'admin_panel',
+        description: 'Visited content management admin panel',
+        metadata: {
+          page: 'admin.html',
+          url: req.originalUrl
+        },
+        req: req
+      });
+      console.log('[ACTIVITY LOG] Logged page visit for user:', userId);
+    }
+  } catch (logError) {
+    // Don't break the request if logging fails
+    console.error('[ACTIVITY LOG] Error logging activity:', logError);
+  }
+  
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
@@ -426,6 +453,18 @@ router.post('/', upload.single('bannerImage'), async (req, res) => {
 
       const createdBanner = await swell.post('/content/banners', bannerData);
 
+      // Log the activity
+      ActivityLogger.log({
+        userId: req.user?.id,
+        userEmail: req.user?.email,
+        action: 'create_banner',
+        resourceType: 'banner',
+        resourceId: createdBanner.id,
+        description: `Created banner with type ${bannerType}`,
+        metadata: { bannerType, bannerValue, priority },
+        req
+      });
+
       return res.redirect('/api/content?status=success&message=Banner created successfully');
     } catch (contentError) {
       console.error('Error creating banner content:', contentError);
@@ -548,6 +587,18 @@ router.post('/protection', upload.single('proctectionIcon'), async (req, res) =>
 
       const savedProtection = await swell.post('/content/protection', protectionData);
 
+      // Log the activity
+      ActivityLogger.log({
+        userId: req.user?.id,
+        userEmail: req.user?.email,
+        action: 'create_protection',
+        resourceType: 'protection',
+        resourceId: savedProtection.id,
+        description: `Created protection: ${title}`,
+        metadata: { title, short_description },
+        req
+      });
+
       return res.redirect('/api/content?section=protection&status=success&message=Protection saved successfully');
     } catch (saveError) {
       console.error('Error saving protection:', saveError);
@@ -589,6 +640,19 @@ router.delete('/banners/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await swell.delete(`/content/banners/${id}`);
+    
+    // Log the activity
+    ActivityLogger.log({
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      action: 'delete_banner',
+      resourceType: 'banner',
+      resourceId: id,
+      description: `Deleted banner ${id}`,
+      metadata: { bannerId: id },
+      req
+    });
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting banner:', error);
@@ -600,6 +664,19 @@ router.delete('/protections/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await swell.delete(`/content/protection/${id}`);
+    
+    // Log the activity
+    ActivityLogger.log({
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      action: 'delete_protection',
+      resourceType: 'protection',
+      resourceId: id,
+      description: `Deleted protection ${id}`,
+      metadata: { protectionId: id },
+      req
+    });
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting protection:', error);
@@ -639,6 +716,19 @@ router.put('/banners/:id', upload.single('bannerImage'), async (req, res) => {
     if (imageAsset) payload.content.image = imageAsset;
 
     await swell.put(`/content/banners/${req.params.id}`, payload);
+    
+    // Log the activity
+    ActivityLogger.log({
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      action: 'edit_banner',
+      resourceType: 'banner',
+      resourceId: req.params.id,
+      description: `Updated banner ${req.params.id}`,
+      metadata: { bannerType, bannerValue, priority },
+      req
+    });
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating banner:', err);
@@ -680,6 +770,19 @@ router.put('/protections/:id', upload.single('proctectionIcon'), async (req, res
     if (imageAsset) payload.content.icon = imageAsset;
 
     await swell.put(`/content/protection/${req.params.id}`, payload);
+    
+    // Log the activity
+    ActivityLogger.log({
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      action: 'edit_protection',
+      resourceType: 'protection',
+      resourceId: req.params.id,
+      description: `Updated protection ${req.params.id}`,
+      metadata: { title, short_description },
+      req
+    });
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating protection:', err);

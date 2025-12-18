@@ -13,5 +13,6 @@ router.put('/:id/certifications', uploadCertifications, updateUserWithCertificat
 router.put('/:id/personal_id', uploadCertifications, userController.updateUserWithPersonalid);
 router.get('/debug-template', userController.debugContentTemplate);
 router.get('/test', userController.testTwilioConnection);
+router.get('/get-user-country/:id', userController.getUserCountry);
 
 module.exports = router;

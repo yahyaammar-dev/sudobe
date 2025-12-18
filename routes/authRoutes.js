@@ -338,6 +338,28 @@ router.get('/logout', (req, res) => {
   res.redirect('/auth.html');
 });
 
+// Get current user info including role
+const verifyToken = require('../middleware/auth');
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const user = await swell.get(`/content/cms-users/${req.user.id}`);
+    res.json({
+      success: true,
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        role: user.content?.role || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch user info' 
+    });
+  }
+});
+
 
 // Create or login user with OTP
 router.post('/register-user', async (req, res) => {

@@ -4,6 +4,7 @@ const accountsController = require('../controllers/accountsController');
 
 router.get('/get-all-orders/:userId', accountsController.getOrdersByUserId)
 router.get('/get-order/:orderId', accountsController.getOrderById)
+router.get('/get-customer-details/:accountId', accountsController.getCustomerDetails)
 router.delete('/delete-account/:accountId', accountsController.deleteAccount);
 router.get('/:accountId/addresses', accountsController.getAddressesByAccountId);
 router.put('/addresses/:addressId', accountsController.updateAddress);

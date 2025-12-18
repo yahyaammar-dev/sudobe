@@ -22,7 +22,7 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
     
     // 1. Find user
     const result = await swell.get('/accounts', {
-      where: { phone: '+' + toPhoneNumber }
+      where: { phone: toPhoneNumber }
     });
     console.log(result)
     if (result.count === 0) {
@@ -136,7 +136,7 @@ exports.verifyOtp = async (req, res) => {
     console.log(toPhoneNumber)
     // Get account by phone number
     const result = await swell.get('/accounts', {
-      where: { phone: '+' + toPhoneNumber }
+      where: { phone: toPhoneNumber }
     });
 
     if (result.count === 0) {
@@ -536,3 +536,68 @@ exports.testTwilioConnection = async (req, res) => {
   }
 };
 
+exports.getUserCountry = async (req, res) => {
+  try {
+    // get user id from request
+    const { id } = req.params;
+    // find user by id 
+    const user = await swell.get(`/accounts/${id}`);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // get user phone number from his account
+    const phone = user.phone;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'User phone number not found' });
+    }
+
+    // get country from phone number
+    const country = await getCountryFromPhoneNumber(phone);
+    
+    // Fetch shipping rate for the user's country
+    let shippingRate = null;
+    try {
+      const rates = await swell.get('/content/shipping-rates', {
+        limit: 1000,
+        where: {
+          'content.country_name': country
+        }
+      });
+      
+      // Get the first matching shipping rate
+      if (rates.results && rates.results.length > 0) {
+        const rate = rates.results[0];
+        shippingRate = {
+          id: rate.id,
+          country_name: rate.content?.country_name || country,
+          min_rate: rate.content?.min_rate || null,
+          max_rate: rate.content?.max_rate || null
+        };
+      }
+    } catch (rateError) {
+      console.error('Error fetching shipping rate:', rateError);
+      // Don't fail the request if shipping rate fetch fails, just log it
+    }
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'User country retrieved successfully', 
+      country,
+      shippingRate 
+    });
+  } catch (error) {
+    console.error('Error getting user country:', error);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve user country', error: error.message });
+  }
+};
+
+async function getCountryFromPhoneNumber(phone) {
+  try {
+    const country = await client.lookups.v1.phoneNumbers(phone).fetch();
+    return country.countryCode;
+  } catch (error) {
+    console.error('Error looking up phone number:', error);
+    throw error;
+  }
+}

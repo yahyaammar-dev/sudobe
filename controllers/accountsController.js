@@ -3,6 +3,7 @@ require('dotenv').config();
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
+const ActivityLogger = require('../services/activityLogger');
 
 
 exports.getOrdersByUserId = async (req, res) => {
@@ -212,14 +213,17 @@ exports.updateAddress = async (req, res) => {
     const {
         parent_id,
         address1,
+        address2,
         city,
         company,
         country,
         first_name,
         last_name,
         name,
+        phone,
         state,
-        zip
+        zip,
+        active
     } = req.body;
 
     if (!addressId || !parent_id || !address1) {
@@ -233,14 +237,29 @@ exports.updateAddress = async (req, res) => {
         const updatedAddress = await swell.put(`/accounts:addresses/${addressId}`, {
             parent_id,
             address1,
+            address2,
             city,
             company,
             country,
             first_name,
             last_name,
             name,
+            phone,
             state,
-            zip
+            zip,
+            active
+        });
+
+        // Log the activity
+        ActivityLogger.log({
+            userId: req.user?.id,
+            userEmail: req.user?.email,
+            action: 'edit_customer_address',
+            resourceType: 'address',
+            resourceId: addressId,
+            description: `Updated address ${addressId} for customer ${parent_id}`,
+            metadata: { parent_id, addressId, address1, city, country },
+            req
         });
 
         return res.status(200).json({
@@ -273,6 +292,18 @@ exports.deleteAddress = async (req, res) => {
     try {
         const deleted = await swell.delete(`/accounts:addresses/${addressId}`);
 
+        // Log the activity
+        ActivityLogger.log({
+            userId: req.user?.id,
+            userEmail: req.user?.email,
+            action: 'delete_customer_address',
+            resourceType: 'address',
+            resourceId: addressId,
+            description: `Deleted address ${addressId}`,
+            metadata: { addressId },
+            req
+        });
+
         return res.status(200).json({
             success: true,
             message: 'Address deleted successfully',
@@ -304,7 +335,7 @@ exports.createAddress = async (req, res) => {
         phone,
         state,
         zip,
-        active = true
+        active
     } = req.body;
 
     if (!parent_id || !address1) {
@@ -328,7 +359,19 @@ exports.createAddress = async (req, res) => {
             phone,
             state,
             zip,
-            active
+            active: true
+        });
+
+        // Log the activity
+        ActivityLogger.log({
+            userId: req.user?.id,
+            userEmail: req.user?.email,
+            action: 'create_customer_address',
+            resourceType: 'address',
+            resourceId: newAddress.id,
+            description: `Created address for customer ${parent_id}`,
+            metadata: { parent_id, address1, city, country },
+            req
         });
 
         return res.status(201).json({
@@ -393,6 +436,40 @@ exports.updateFavorites = async (req, res) => {
 
 
 // controllers/accountsController.js
+
+exports.getCustomerDetails = async (req, res) => {
+    const { accountId } = req.params;
+
+    if (!accountId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing account ID',
+        });
+    }
+
+    try {
+        const customer = await swell.get(`/accounts/${accountId}`);
+
+        if (!customer || customer.id !== accountId) {
+            return res.status(404).json({
+                success: false,
+                message: 'Customer not found',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Customer details fetched successfully',
+            customer,
+        });
+    } catch (err) {
+        console.error('Error fetching customer details:', err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch customer details',
+        });
+    }
+};
 
 exports.getFavoriteProducts = async (req, res) => {
     const { accountId } = req.params;

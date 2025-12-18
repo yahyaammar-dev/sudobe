@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orders - SODU CMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    .sidebar {
+      background-color: #f8f9fa;
+      min-height: 100vh;
+      border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar .list-group-item {
+      border: none;
+      border-radius: 0;
+    }
+
+    .sidebar .list-group-item:hover {
+      background-color: #e9ecef;
+    }
+
+    .sidebar .list-group-item.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .sidebar .list-group-item a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      width: 100%;
+    }
+
+    .main-content {
+      padding: 20px;
+    }
+
+    .card {
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 20px;
+    }
+
+    .table-responsive {
+      border-radius: 0.375rem;
+    }
+
+    .item-row {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 0.375rem;
+      margin-bottom: 10px;
+      border: 1px solid #dee2e6;
+    }
+
+    .badge-status {
+      padding: 0.35em 0.65em;
+      font-size: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        min-height: auto;
+      }
+
+      .main-content {
+        padding: 10px;
+      }
+
+      .table-responsive {
+        font-size: 0.875rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div id="sidebar-container"></div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 col-lg-10 main-content">
+        <div id="alert-container"></div>
+        
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2><i class="bi bi-receipt me-2"></i>Orders Management</h2>
+          <button class="btn btn-primary" onclick="showOrderForm()">
+            <i class="bi bi-plus-circle me-2"></i>Create New Order
+          </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="statusFilter" class="form-label">Filter by Status</label>
+                <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                  <option value="">All Statuses</option>
+                  <option value="payment_pending">Payment Pending</option>
+                  <option value="pending">Pending</option>
+                  <option value="hold">Hold</option>
+                  <option value="fulfilled">Fulfilled</option>
+                  <option value="canceled">Canceled</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              <div class="col-md-8">
+                <label for="searchFilter" class="form-label">Search</label>
+                <input type="text" class="form-control" id="searchFilter" placeholder="Search by order number, customer..." onkeyup="debounceSearch()">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">All Orders</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Grand Total</th>
+                    <th>Status</th>
+                    <th>Date Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center">
+                      <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="paginationContainer" class="mt-3"></div>
+          </div>
+        </div>
+
+        <!-- Order Form Modal -->
+        <div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="orderModalTitle">Create Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <form id="orderForm">
+                  <input type="hidden" id="orderId">
+                  
+                  <!-- Account Selection -->
+                  <div class="mb-4">
+                    <h5>Customer Account</h5>
+                    <div class="mb-3">
+                      <label for="account_id" class="form-label">Account *</label>
+                      <select class="form-select" id="account_id" required>
+                        <option value="">Select an account...</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Order Items -->
+                  <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5>Order Items</h5>
+                      <button type="button" class="btn btn-sm btn-primary" onclick="addItemRow()">
+                        <i class="bi bi-plus-circle"></i> Add Item
+                      </button>
+                    </div>
+                    <div id="itemsContainer"></div>
+                  </div>
+
+                  <!-- Billing -->
+                  <div class="mb-4">
+                    <h5>Billing Information</h5>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="billing_name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="billing_name">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="billing_phone" class="form-label">Phone</label>
+                        <input type="text" class="form-control" id="billing_phone">
+                      </div>
+                      <div class="col-md-12 mb-3">
+                        <label for="billing_address1" class="form-label">Address Line 1</label>
+                        <input type="text" class="form-control" id="billing_address1">
+                      </div>
+                      <div class="col-md-12 mb-3">
+                        <label for="billing_address2" class="form-label">Address Line 2</label>
+                        <input type="text" class="form-control" id="billing_address2">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="billing_city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="billing_city">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="billing_state" class="form-label">State</label>
+                        <input type="text" class="form-control" id="billing_state">
+                      </div>
+                      <div class="col-md-2 mb-3">
+                        <label for="billing_zip" class="form-label">ZIP</label>
+                        <input type="text" class="form-control" id="billing_zip">
+                      </div>
+                      <div class="col-md-2 mb-3">
+                        <label for="billing_country" class="form-label">Country</label>
+                        <select class="form-select" id="billing_country">
+                          <option value="">Select country...</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Shipping -->
+                  <div class="mb-4">
+                    <h5>Shipping Information</h5>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="shipping_name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="shipping_name">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="shipping_phone" class="form-label">Phone</label>
+                        <input type="text" class="form-control" id="shipping_phone">
+                      </div>
+                      <div class="col-md-12 mb-3">
+                        <label for="shipping_address1" class="form-label">Address Line 1</label>
+                        <input type="text" class="form-control" id="shipping_address1">
+                      </div>
+                      <div class="col-md-12 mb-3">
+                        <label for="shipping_address2" class="form-label">Address Line 2</label>
+                        <input type="text" class="form-control" id="shipping_address2">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="shipping_city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="shipping_city">
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label for="shipping_state" class="form-label">State</label>
+                        <input type="text" class="form-control" id="shipping_state">
+                      </div>
+                      <div class="col-md-2 mb-3">
+                        <label for="shipping_zip" class="form-label">ZIP</label>
+                        <input type="text" class="form-control" id="shipping_zip">
+                      </div>
+                      <div class="col-md-2 mb-3">
+                        <label for="shipping_country" class="form-label">Country</label>
+                        <select class="form-select" id="shipping_country">
+                          <option value="">Select country...</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Coupon & Status -->
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label for="coupon_code" class="form-label">Coupon Code</label>
+                      <input type="text" class="form-control" id="coupon_code">
+                    </div>
+                    <div class="col-md-6" id="statusFieldContainer">
+                      <label for="order_status" class="form-label">Status</label>
+                      <select class="form-select" id="order_status">
+                        <option value="payment_pending">Payment Pending</option>
+                        <option value="pending">Pending</option>
+                        <option value="hold">Hold</option>
+                        <option value="fulfilled">Fulfilled</option>
+                        <option value="canceled">Canceled</option>
+                        <option value="complete">Complete</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Content Fields -->
+                  <div class="mb-4">
+                    <h5>Order Details</h5>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="content_order_status" class="form-label">Order Status</label>
+                        <input type="text" class="form-control" id="content_order_status" placeholder="e.g., Processing">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="factory_dispatch" class="form-label">Factory Dispatch</label>
+                        <input type="text" class="form-control" id="factory_dispatch" placeholder="Factory dispatch info">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="date_of_shipping" class="form-label">Date of Shipping</label>
+                        <input type="date" class="form-control" id="date_of_shipping">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="delivery_date" class="form-label">Delivery Date</label>
+                        <input type="date" class="form-control" id="delivery_date">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="transfer_id" class="form-label">Transfer ID</label>
+                        <input type="text" class="form-control" id="transfer_id" placeholder="Transfer ID">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="date_of_payment" class="form-label">Date of Payment</label>
+                        <input type="date" class="form-control" id="date_of_payment">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="production_duration" class="form-label">Production Duration (days)</label>
+                        <input type="number" class="form-control" id="production_duration" min="0" placeholder="Days">
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="shipping_company_name" class="form-label">Shipping Company</label>
+                        <select class="form-select" id="shipping_company_name">
+                          <option value="">Select shipping company...</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- File Uploads -->
+                  <div class="mb-4">
+                    <h5>Documents & Files</h5>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="shipping_qutation" class="form-label">Shipping Quotation</label>
+                        <input type="file" class="form-control" id="shipping_qutation" accept="*/*">
+                        <div id="shipping_qutation_preview" class="mt-2"></div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="dhl_invoice" class="form-label">DHL Invoice</label>
+                        <input type="file" class="form-control" id="dhl_invoice" accept="*/*">
+                        <div id="dhl_invoice_preview" class="mt-2"></div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="inspection_report" class="form-label">Inspection Report</label>
+                        <input type="file" class="form-control" id="inspection_report" accept="*/*">
+                        <div id="inspection_report_preview" class="mt-2"></div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="invoice_by_factory" class="form-label">Invoice by Factory</label>
+                        <input type="file" class="form-control" id="invoice_by_factory" accept="*/*">
+                        <div id="invoice_by_factory_preview" class="mt-2"></div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="shipping_policy" class="form-label">Shipping Policy</label>
+                        <input type="file" class="form-control" id="shipping_policy" accept="*/*">
+                        <div id="shipping_policy_preview" class="mt-2"></div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="other_documents" class="form-label">Other Documents (Multiple)</label>
+                        <input type="file" class="form-control" id="other_documents" multiple accept="*/*">
+                        <div id="other_documents_preview" class="mt-2"></div>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Permissions Helper Script (must be loaded first) -->
+  <script src="/js/permissions.js"></script>
+  
+  <!-- Shared Sidebar Component -->
+  <script src="/js/sidebar.js"></script>
+
+  <script>
+    const API_BASE = '/orders/api';
+    let ordersModal;
+    let currentOrders = [];
+    let accounts = [];
+    let products = [];
+    let currentPage = 1;
+    let searchTimeout;
+    let itemCounter = 0;
+
+    // Mapping of country names to ISO 2-letter country codes
+    const countryNameToCode = {
+      'Afghanistan': 'AF', 'Albania': 'AL', 'Algeria': 'DZ', 'Andorra': 'AD', 'Angola': 'AO',
+      'Antigua and Barbuda': 'AG', 'Argentina': 'AR', 'Armenia': 'AM', 'Australia': 'AU',
+      'Austria': 'AT', 'Azerbaijan': 'AZ', 'Bahamas': 'BS', 'Bahrain': 'BH', 'Bangladesh': 'BD',
+      'Barbados': 'BB', 'Belarus': 'BY', 'Belgium': 'BE', 'Belize': 'BZ', 'Benin': 'BJ',
+      'Bhutan': 'BT', 'Bolivia': 'BO', 'Bosnia and Herzegovina': 'BA', 'Botswana': 'BW',
+      'Brazil': 'BR', 'Brunei': 'BN', 'Bulgaria': 'BG', 'Burkina Faso': 'BF', 'Burundi': 'BI',
+      'Cambodia': 'KH', 'Cameroon': 'CM', 'Canada': 'CA', 'Cape Verde': 'CV',
+      'Central African Republic': 'CF', 'Chad': 'TD', 'Chile': 'CL', 'China': 'CN',
+      'Colombia': 'CO', 'Comoros': 'KM', 'Congo': 'CG', 'Costa Rica': 'CR', 'Croatia': 'HR',
+      'Cuba': 'CU', 'Cyprus': 'CY', 'Czech Republic': 'CZ', 'Denmark': 'DK', 'Djibouti': 'DJ',
+      'Dominica': 'DM', 'Dominican Republic': 'DO', 'East Timor': 'TL', 'Ecuador': 'EC',
+      'Egypt': 'EG', 'El Salvador': 'SV', 'Equatorial Guinea': 'GQ', 'Eritrea': 'ER',
+      'Estonia': 'EE', 'Ethiopia': 'ET', 'Fiji': 'FJ', 'Finland': 'FI', 'France': 'FR',
+      'Gabon': 'GA', 'Gambia': 'GM', 'Georgia': 'GE', 'Germany': 'DE', 'Ghana': 'GH',
+      'Greece': 'GR', 'Grenada': 'GD', 'Guatemala': 'GT', 'Guinea': 'GN', 'Guinea-Bissau': 'GW',
+      'Guyana': 'GY', 'Haiti': 'HT', 'Honduras': 'HN', 'Hungary': 'HU', 'Iceland': 'IS',
+      'India': 'IN', 'Indonesia': 'ID', 'Iran': 'IR', 'Iraq': 'IQ', 'Ireland': 'IE',
+      'Israel': 'IL', 'Italy': 'IT', 'Jamaica': 'JM', 'Japan': 'JP', 'Jordan': 'JO',
+      'Kazakhstan': 'KZ', 'Kenya': 'KE', 'Kiribati': 'KI', 'North Korea': 'KP', 'South Korea': 'KR',
+      'Kuwait': 'KW', 'Kyrgyzstan': 'KG', 'Laos': 'LA', 'Latvia': 'LV', 'Lebanon': 'LB',
+      'Lesotho': 'LS', 'Liberia': 'LR', 'Libya': 'LY', 'Liechtenstein': 'LI', 'Lithuania': 'LT',
+      'Luxembourg': 'LU', 'Madagascar': 'MG', 'Malawi': 'MW', 'Malaysia': 'MY', 'Maldives': 'MV',
+      'Mali': 'ML', 'Malta': 'MT', 'Marshall Islands': 'MH', 'Mauritania': 'MR', 'Mauritius': 'MU',
+      'Mexico': 'MX', 'Micronesia': 'FM', 'Moldova': 'MD', 'Monaco': 'MC', 'Mongolia': 'MN',
+      'Montenegro': 'ME', 'Morocco': 'MA', 'Mozambique': 'MZ', 'Myanmar': 'MM', 'Namibia': 'NA',
+      'Nauru': 'NR', 'Nepal': 'NP', 'Netherlands': 'NL', 'New Zealand': 'NZ', 'Nicaragua': 'NI',
+      'Niger': 'NE', 'Nigeria': 'NG', 'North Macedonia': 'MK', 'Norway': 'NO', 'Oman': 'OM',
+      'Pakistan': 'PK', 'Palau': 'PW', 'Panama': 'PA', 'Papua New Guinea': 'PG', 'Paraguay': 'PY',
+      'Peru': 'PE', 'Philippines': 'PH', 'Poland': 'PL', 'Portugal': 'PT', 'Qatar': 'QA',
+      'Romania': 'RO', 'Russia': 'RU', 'Rwanda': 'RW', 'Saint Kitts and Nevis': 'KN',
+      'Saint Lucia': 'LC', 'Saint Vincent and the Grenadines': 'VC', 'Samoa': 'WS',
+      'San Marino': 'SM', 'Sao Tome and Principe': 'ST', 'Saudi Arabia': 'SA', 'Senegal': 'SN',
+      'Serbia': 'RS', 'Seychelles': 'SC', 'Sierra Leone': 'SL', 'Singapore': 'SG',
+      'Slovakia': 'SK', 'Slovenia': 'SI', 'Solomon Islands': 'SB', 'Somalia': 'SO',
+      'South Africa': 'ZA', 'South Sudan': 'SS', 'Spain': 'ES', 'Sri Lanka': 'LK',
+      'Sudan': 'SD', 'Suriname': 'SR', 'Sweden': 'SE', 'Switzerland': 'CH', 'Syria': 'SY',
+      'Taiwan': 'TW', 'Tajikistan': 'TJ', 'Tanzania': 'TZ', 'Thailand': 'TH', 'Togo': 'TG',
+      'Tonga': 'TO', 'Trinidad and Tobago': 'TT', 'Tunisia': 'TN', 'Turkey': 'TR',
+      'Turkmenistan': 'TM', 'Tuvalu': 'TV', 'Uganda': 'UG', 'Ukraine': 'UA',
+      'United Arab Emirates': 'AE', 'United Kingdom': 'GB', 'United States': 'US',
+      'Uruguay': 'UY', 'Uzbekistan': 'UZ', 'Vanuatu': 'VU', 'Vatican City': 'VA',
+      'Venezuela': 'VE', 'Vietnam': 'VN', 'Yemen': 'YE', 'Zambia': 'ZM', 'Zimbabwe': 'ZW'
+    };
+
+    // Reverse mapping: country code to country name
+    const countryCodeToName = {};
+    Object.keys(countryNameToCode).forEach(name => {
+      countryCodeToName[countryNameToCode[name]] = name;
+    });
+
+    // List of country names for dropdown (sorted)
+    const countries = Object.keys(countryNameToCode).sort();
+
+    // Helper functions
+    function getCountryCode(countryName) {
+      return countryNameToCode[countryName] || countryName;
+    }
+
+    function getCountryName(countryCode) {
+      return countryCodeToName[countryCode] || countryCode;
+    }
+
+    function populateCountryDropdowns() {
+      const billingSelect = document.getElementById('billing_country');
+      const shippingSelect = document.getElementById('shipping_country');
+      
+      // Populate billing country dropdown
+      countries.forEach(countryName => {
+        const option = document.createElement('option');
+        option.value = countryName;
+        option.textContent = countryName;
+        billingSelect.appendChild(option);
+      });
+      
+      // Populate shipping country dropdown
+      countries.forEach(countryName => {
+        const option = document.createElement('option');
+        option.value = countryName;
+        option.textContent = countryName;
+        shippingSelect.appendChild(option);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      ordersModal = new bootstrap.Modal(document.getElementById('orderModal'));
+      populateCountryDropdowns();
+      loadAccounts();
+      loadProducts();
+      loadOrders();
+      populateShippingCompanyDropdown();
+    });
+
+    function showAlert(message, type = 'success') {
+      const alertContainer = document.getElementById('alert-container');
+      const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+      alertContainer.innerHTML = alertHtml;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 5000);
+    }
+
+    async function loadAccounts() {
+      try {
+        const response = await fetch(`${API_BASE}/accounts/list`);
+        const result = await response.json();
+        if (result.success) {
+          accounts = result.data || [];
+        }
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+      }
+    }
+
+    function populateShippingCompanyDropdown() {
+      const shippingCompanySelect = document.getElementById('shipping_company_name');
+      if (!shippingCompanySelect) return;
+      
+      shippingCompanySelect.innerHTML = '<option value="">Select shipping company...</option>';
+      if (accounts && accounts.length > 0) {
+        accounts.forEach(acc => {
+          const name = acc.name || acc.email || acc.id;
+          const option = document.createElement('option');
+          option.value = acc.id;
+          option.textContent = name;
+          shippingCompanySelect.appendChild(option);
+        });
+      }
+    }
+
+    async function loadProducts() {
+      try {
+        const response = await fetch(`${API_BASE}/products/list`);
+        const result = await response.json();
+        if (result.success) {
+          products = result.data || [];
+          console.log('Products loaded:', products.length);
+        } else {
+          console.error('Failed to load products:', result.message);
+          showAlert('Failed to load products list', 'warning');
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+        showAlert('Error loading products list', 'warning');
+      }
+    }
+
+    async function loadOrders(page = 1) {
+      try {
+        currentPage = page;
+        const status = document.getElementById('statusFilter')?.value || '';
+        const search = document.getElementById('searchFilter')?.value || '';
+        
+        let url = `${API_BASE}?page=${page}&limit=50`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+          currentOrders = result.data || [];
+          renderOrders(result.pagination);
+        } else {
+          showAlert('Failed to load orders', 'danger');
+        }
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        showAlert('Error loading orders', 'danger');
+      }
+    }
+
+    function renderOrders(pagination) {
+      const tbody = document.getElementById('ordersTableBody');
+      
+      if (currentOrders.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center text-muted">
+              No orders found. Click "Create New Order" to create one.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = currentOrders.map(order => {
+        const accountName = order.account?.name || order.account?.email || order.account_id || 'N/A';
+        const itemsCount = order.items?.length || 0;
+        const grandTotal = order.grand_total ? `$${order.grand_total.toFixed(2)}` : '$0.00';
+        const status = order.status || 'pending';
+        const dateCreated = order.date_created ? new Date(order.date_created).toLocaleDateString() : 'N/A';
+        
+        return `
+          <tr>
+            <td><strong>#${order.number || order.id.substring(0, 8)}</strong></td>
+            <td>${accountName}</td>
+            <td>${itemsCount} item(s)</td>
+            <td>${grandTotal}</td>
+            <td><span class="badge badge-status bg-secondary">${status}</span></td>
+            <td>${dateCreated}</td>
+            <td>
+              <button class="btn btn-sm btn-primary me-2" onclick="editOrder('${order.id}')">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteOrder('${order.id}')">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Render pagination
+      if (pagination && pagination.count > pagination.limit) {
+        renderPagination(pagination);
+      } else {
+        document.getElementById('paginationContainer').innerHTML = '';
+      }
+    }
+
+    function renderPagination(pagination) {
+      const totalPages = Math.ceil(pagination.count / pagination.limit);
+      const current = pagination.page;
+      
+      let html = '<nav><ul class="pagination justify-content-center">';
+      
+      // Previous
+      html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadOrders(${current - 1}); return false;">Previous</a>
+      </li>`;
+      
+      // Page numbers
+      for (let i = Math.max(1, current - 2); i <= Math.min(totalPages, current + 2); i++) {
+        html += `<li class="page-item ${i === current ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="loadOrders(${i}); return false;">${i}</a>
+        </li>`;
+      }
+      
+      // Next
+      html += `<li class="page-item ${current === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadOrders(${current + 1}); return false;">Next</a>
+      </li>`;
+      
+      html += '</ul></nav>';
+      document.getElementById('paginationContainer').innerHTML = html;
+    }
+
+    function addItemRow(itemData = null) {
+      itemCounter++;
+      const container = document.getElementById('itemsContainer');
+      const itemId = itemData?.product_id || '';
+      const quantity = itemData?.quantity || 1;
+      
+      // Generate product options
+      let productOptions = '<option value="">Select a product...</option>';
+      if (products && products.length > 0) {
+        productOptions += products.map(p => {
+          const selected = p.id === itemId ? 'selected' : '';
+          const name = p.name || 'Unnamed Product';
+          return `<option value="${p.id}" ${selected}>${name}</option>`;
+        }).join('');
+      } else {
+        productOptions += '<option value="">Loading products...</option>';
+      }
+      
+      const itemRow = document.createElement('div');
+      itemRow.className = 'item-row';
+      itemRow.id = `item-row-${itemCounter}`;
+      itemRow.innerHTML = `
+        <div class="row align-items-end">
+          <div class="col-md-8 mb-2">
+            <label class="form-label">Product *</label>
+            <select class="form-select item-product" required>
+              ${productOptions}
+            </select>
+          </div>
+          <div class="col-md-3 mb-2">
+            <label class="form-label">Quantity *</label>
+            <input type="number" class="form-control item-quantity" value="${quantity}" min="1" required>
+          </div>
+          <div class="col-md-1 mb-2">
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow('item-row-${itemCounter}')">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      container.appendChild(itemRow);
+      
+      // If products weren't loaded yet, refresh this dropdown when they load
+      if (!products || products.length === 0) {
+        const select = itemRow.querySelector('.item-product');
+        loadProducts().then(() => {
+          if (products && products.length > 0) {
+            let options = '<option value="">Select a product...</option>';
+            options += products.map(p => {
+              const selected = p.id === itemId ? 'selected' : '';
+              const name = p.name || 'Unnamed Product';
+              return `<option value="${p.id}" ${selected}>${name}</option>`;
+            }).join('');
+            select.innerHTML = options;
+          }
+        });
+      }
+    }
+
+    function removeItemRow(rowId) {
+      document.getElementById(rowId)?.remove();
+    }
+
+    async function showOrderForm(orderId = null) {
+      const form = document.getElementById('orderForm');
+      const modalTitle = document.getElementById('orderModalTitle');
+      const statusFieldContainer = document.getElementById('statusFieldContainer');
+      
+      form.reset();
+      document.getElementById('orderId').value = '';
+      document.getElementById('itemsContainer').innerHTML = '';
+      itemCounter = 0;
+      statusFieldContainer.style.display = orderId ? 'block' : 'none';
+      
+      // Clear file previews
+      document.getElementById('shipping_qutation_preview').innerHTML = '';
+      document.getElementById('dhl_invoice_preview').innerHTML = '';
+      document.getElementById('inspection_report_preview').innerHTML = '';
+      document.getElementById('invoice_by_factory_preview').innerHTML = '';
+      document.getElementById('shipping_policy_preview').innerHTML = '';
+      document.getElementById('other_documents_preview').innerHTML = '';
+      
+      // Ensure accounts and products are loaded before showing form
+      if (accounts.length === 0) {
+        await loadAccounts();
+      }
+      if (products.length === 0) {
+        await loadProducts();
+      }
+      
+      // Populate accounts dropdown
+      const accountSelect = document.getElementById('account_id');
+      accountSelect.innerHTML = '<option value="">Select an account...</option>';
+      accounts.forEach(acc => {
+        const name = acc.name || acc.email || acc.id;
+        accountSelect.innerHTML += `<option value="${acc.id}">${name}</option>`;
+      });
+      
+      // Populate shipping company dropdown
+      populateShippingCompanyDropdown();
+      
+      if (orderId) {
+        modalTitle.textContent = 'Edit Order';
+        const order = currentOrders.find(o => o.id === orderId);
+        if (order) {
+          document.getElementById('orderId').value = order.id;
+          document.getElementById('account_id').value = order.account_id || '';
+          document.getElementById('order_status').value = order.status || 'payment_pending';
+          document.getElementById('coupon_code').value = order.coupon_code || '';
+          
+          // Load items
+          if (order.items && order.items.length > 0) {
+            order.items.forEach(item => {
+              addItemRow({
+                product_id: item.product_id,
+                quantity: item.quantity
+              });
+            });
+          } else {
+            addItemRow();
+          }
+          
+          // Load billing
+          if (order.billing) {
+            document.getElementById('billing_name').value = order.billing.name || '';
+            document.getElementById('billing_phone').value = order.billing.phone || '';
+            document.getElementById('billing_address1').value = order.billing.address1 || '';
+            document.getElementById('billing_address2').value = order.billing.address2 || '';
+            document.getElementById('billing_city').value = order.billing.city || '';
+            document.getElementById('billing_state').value = order.billing.state || '';
+            document.getElementById('billing_zip').value = order.billing.zip || '';
+            // Convert country code to country name for dropdown
+            const billingCountryCode = order.billing.country || '';
+            const billingCountryName = getCountryName(billingCountryCode);
+            document.getElementById('billing_country').value = billingCountryName;
+          }
+          
+          // Load shipping
+          if (order.shipping) {
+            document.getElementById('shipping_name').value = order.shipping.name || '';
+            document.getElementById('shipping_phone').value = order.shipping.phone || '';
+            document.getElementById('shipping_address1').value = order.shipping.address1 || '';
+            document.getElementById('shipping_address2').value = order.shipping.address2 || '';
+            document.getElementById('shipping_city').value = order.shipping.city || '';
+            document.getElementById('shipping_state').value = order.shipping.state || '';
+            document.getElementById('shipping_zip').value = order.shipping.zip || '';
+            // Convert country code to country name for dropdown
+            const shippingCountryCode = order.shipping.country || '';
+            const shippingCountryName = getCountryName(shippingCountryCode);
+            document.getElementById('shipping_country').value = shippingCountryName;
+          }
+          
+          // Load content fields
+          const content = order.content || {};
+          document.getElementById('content_order_status').value = content.order_status || '';
+          document.getElementById('factory_dispatch').value = content.factory_dispatch || '';
+          document.getElementById('date_of_shipping').value = content.date_of_shipping || '';
+          document.getElementById('delivery_date').value = content.delivery_date || '';
+          document.getElementById('transfer_id').value = content.transfer_id || '';
+          document.getElementById('date_of_payment').value = content.date_of_payment || '';
+          document.getElementById('production_duration').value = content.production_duration || '';
+          document.getElementById('shipping_company_name').value = content.shipping_company_name || '';
+          
+          // Load file previews
+          const showFilePreview = (fileField, previewId) => {
+            const file = content[fileField];
+            if (file && file.url) {
+              const preview = document.getElementById(previewId);
+              const isImage = file.mimeType?.startsWith('image/') || file.url.match(/\.(jpg|jpeg|png|gif)$/i);
+              if (isImage) {
+                preview.innerHTML = `
+                  <label class="form-label text-muted">Current File:</label><br>
+                  <img src="${file.url}" class="img-thumbnail" style="max-width: 200px; max-height: 200px;" alt="${file.originalFilename || file.filename}">
+                  <br><small><a href="${file.url}" target="_blank">View/Download</a></small>
+                `;
+              } else {
+                preview.innerHTML = `
+                  <label class="form-label text-muted">Current File:</label><br>
+                  <div class="alert alert-info">
+                    <i class="bi bi-file-earmark"></i> <a href="${file.url}" target="_blank">${file.originalFilename || file.filename || 'View Document'}</a>
+                  </div>
+                `;
+              }
+            }
+          };
+          
+          showFilePreview('shipping_qutation', 'shipping_qutation_preview');
+          showFilePreview('dhl_invoice', 'dhl_invoice_preview');
+          showFilePreview('inspection_report', 'inspection_report_preview');
+          showFilePreview('invoice_by_factory', 'invoice_by_factory_preview');
+          showFilePreview('shipping_policy', 'shipping_policy_preview');
+          
+          // Load other_documents (multiple files)
+          const otherDocs = content.other_documents || [];
+          if (otherDocs.length > 0) {
+            const preview = document.getElementById('other_documents_preview');
+            let html = '<label class="form-label text-muted">Current Files:</label><br>';
+            otherDocs.forEach((doc, index) => {
+              if (doc.url) {
+                html += `
+                  <div class="mb-2">
+                    <a href="${doc.url}" target="_blank">${doc.originalFilename || doc.filename || `Document ${index + 1}`}</a>
+                  </div>
+                `;
+              }
+            });
+            preview.innerHTML = html;
+          }
+        }
+      } else {
+        modalTitle.textContent = 'Create Order';
+        addItemRow(); // Add one empty item row by default
+      }
+      
+      ordersModal.show();
+    }
+
+    async function saveOrder() {
+      const form = document.getElementById('orderForm');
+      
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const orderId = document.getElementById('orderId').value;
+      
+      // Collect items
+      const itemRows = document.querySelectorAll('.item-row');
+      const items = [];
+      itemRows.forEach(row => {
+        const productId = row.querySelector('.item-product').value;
+        const quantity = row.querySelector('.item-quantity').value;
+        if (productId && quantity) {
+          items.push({
+            product_id: productId,
+            quantity: parseInt(quantity)
+          });
+        }
+      });
+
+      if (items.length === 0) {
+        showAlert('Please add at least one item', 'danger');
+        return;
+      }
+
+      // Build FormData for file uploads
+      const formData = new FormData();
+      
+      // Add basic order data
+      formData.append('account_id', document.getElementById('account_id').value);
+      formData.append('items', JSON.stringify(items));
+
+      // Add billing if any field is filled
+      const billingName = document.getElementById('billing_name').value;
+      if (billingName) {
+        const billingCountryName = document.getElementById('billing_country').value;
+        const billingCountryCode = billingCountryName ? getCountryCode(billingCountryName) : '';
+        
+        formData.append('billing', JSON.stringify({
+          name: billingName,
+          phone: document.getElementById('billing_phone').value || '',
+          address1: document.getElementById('billing_address1').value || '',
+          address2: document.getElementById('billing_address2').value || '',
+          city: document.getElementById('billing_city').value || '',
+          state: document.getElementById('billing_state').value || '',
+          zip: document.getElementById('billing_zip').value || '',
+          country: billingCountryCode
+        }));
+      }
+
+      // Add shipping if any field is filled
+      const shippingName = document.getElementById('shipping_name').value;
+      if (shippingName) {
+        const shippingCountryName = document.getElementById('shipping_country').value;
+        const shippingCountryCode = shippingCountryName ? getCountryCode(shippingCountryName) : '';
+        
+        formData.append('shipping', JSON.stringify({
+          name: shippingName,
+          phone: document.getElementById('shipping_phone').value || '',
+          address1: document.getElementById('shipping_address1').value || '',
+          address2: document.getElementById('shipping_address2').value || '',
+          city: document.getElementById('shipping_city').value || '',
+          state: document.getElementById('shipping_state').value || '',
+          zip: document.getElementById('shipping_zip').value || '',
+          country: shippingCountryCode
+        }));
+      }
+
+      // Add coupon code only if provided and not empty
+      const couponCode = document.getElementById('coupon_code').value.trim();
+      if (couponCode) {
+        formData.append('coupon_code', couponCode);
+      }
+
+      // Add status for updates
+      if (orderId) {
+        formData.append('status', document.getElementById('order_status').value);
+      }
+      
+      // Add content fields
+      formData.append('order_status', document.getElementById('content_order_status').value || '');
+      formData.append('factory_dispatch', document.getElementById('factory_dispatch').value || '');
+      formData.append('date_of_shipping', document.getElementById('date_of_shipping').value || '');
+      formData.append('delivery_date', document.getElementById('delivery_date').value || '');
+      formData.append('transfer_id', document.getElementById('transfer_id').value || '');
+      formData.append('date_of_payment', document.getElementById('date_of_payment').value || '');
+      formData.append('production_duration', document.getElementById('production_duration').value || '');
+      formData.append('shipping_company_name', document.getElementById('shipping_company_name').value || '');
+      
+      // Add file uploads
+      const shippingQutationFile = document.getElementById('shipping_qutation').files[0];
+      if (shippingQutationFile) formData.append('shipping_qutation', shippingQutationFile);
+      
+      const dhlInvoiceFile = document.getElementById('dhl_invoice').files[0];
+      if (dhlInvoiceFile) formData.append('dhl_invoice', dhlInvoiceFile);
+      
+      const inspectionReportFile = document.getElementById('inspection_report').files[0];
+      if (inspectionReportFile) formData.append('inspection_report', inspectionReportFile);
+      
+      const invoiceByFactoryFile = document.getElementById('invoice_by_factory').files[0];
+      if (invoiceByFactoryFile) formData.append('invoice_by_factory', invoiceByFactoryFile);
+      
+      const shippingPolicyFile = document.getElementById('shipping_policy').files[0];
+      if (shippingPolicyFile) formData.append('shipping_policy', shippingPolicyFile);
+      
+      const otherDocumentsFiles = document.getElementById('other_documents').files;
+      if (otherDocumentsFiles && otherDocumentsFiles.length > 0) {
+        Array.from(otherDocumentsFiles).forEach(file => {
+          formData.append('other_documents', file);
+        });
+      }
+
+      try {
+        const url = orderId ? `${API_BASE}/${orderId}` : API_BASE;
+        const method = orderId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert(orderId ? 'Order updated successfully' : 'Order created successfully');
+          ordersModal.hide();
+          loadOrders(currentPage);
+        } else {
+          // Check if there are specific validation errors
+          let errorMessage = result.message || 'Failed to save order';
+          if (result.errors) {
+            const errorDetails = Object.entries(result.errors)
+              .map(([field, error]) => {
+                const errorMsg = typeof error === 'object' ? error.message : error;
+                return `${field}: ${errorMsg}`;
+              })
+              .join(', ');
+            errorMessage += ` (${errorDetails})`;
+          }
+          showAlert(errorMessage, 'danger');
+        }
+      } catch (error) {
+        console.error('Error saving order:', error);
+        showAlert('Error saving order', 'danger');
+      }
+    }
+
+    function editOrder(orderId) {
+      // Need to fetch full order details first
+      fetch(`${API_BASE}/${orderId}`)
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            // Add to currentOrders temporarily for the form
+            const index = currentOrders.findIndex(o => o.id === orderId);
+            if (index >= 0) {
+              currentOrders[index] = result.data;
+            } else {
+              currentOrders.push(result.data);
+            }
+            showOrderForm(orderId);
+          } else {
+            showAlert('Failed to load order details', 'danger');
+          }
+        })
+        .catch(error => {
+          console.error('Error loading order:', error);
+          showAlert('Error loading order', 'danger');
+        });
+    }
+
+    async function deleteOrder(orderId) {
+      if (!confirm('Are you sure you want to delete this order?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/${orderId}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert('Order deleted successfully');
+          loadOrders(currentPage);
+        } else {
+          showAlert(result.message || 'Failed to delete order', 'danger');
+        }
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        showAlert('Error deleting order', 'danger');
+      }
+    }
+
+    function applyFilters() {
+      loadOrders(1);
+    }
+
+    function debounceSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        loadOrders(1);
+      }, 500);
+    }
+  </script>
+</body>
+
+</html>
+

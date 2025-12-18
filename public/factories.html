@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factories - SODU CMS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+    .sidebar {
+      background-color: #f8f9fa;
+      min-height: 100vh;
+      border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar .list-group-item {
+      border: none;
+      border-radius: 0;
+    }
+
+    .sidebar .list-group-item:hover {
+      background-color: #e9ecef;
+    }
+
+    .sidebar .list-group-item.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    .sidebar .list-group-item a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      width: 100%;
+    }
+
+    .main-content {
+      padding: 20px;
+    }
+
+    .card {
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      margin-bottom: 20px;
+    }
+
+    .table-responsive {
+      border-radius: 0.375rem;
+    }
+
+    .logo-preview {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 0.375rem;
+      border: 1px solid #dee2e6;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        min-height: auto;
+      }
+
+      .main-content {
+        padding: 10px;
+      }
+
+      .table-responsive {
+        font-size: 0.875rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div id="sidebar-container"></div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 col-lg-10 main-content">
+        <div id="alert-container"></div>
+        
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2><i class="bi bi-building me-2"></i>Factories Management</h2>
+          <button class="btn btn-primary" onclick="showFactoryForm()">
+            <i class="bi bi-plus-circle me-2"></i>Add New Factory
+          </button>
+        </div>
+
+        <!-- Factories Table -->
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">All Factories</h5>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Factory Name</th>
+                    <th>Email</th>
+                    <th>Store Front Cover Photo</th>
+                    <th>Store Front Logo</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="factoriesTableBody">
+                  <tr>
+                    <td colspan="5" class="text-center">
+                      <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Factory Form Modal -->
+        <div class="modal fade" id="factoryModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="factoryModalTitle">Add Factory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+                <form id="factoryForm" enctype="multipart/form-data">
+                  <input type="hidden" id="factoryId">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="factory_name" class="form-label">Factory Name *</label>
+                      <input type="text" class="form-control" id="factory_name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="email" class="form-label">Email *</label>
+                      <input type="email" class="form-control" id="email" required>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="country" class="form-label">Country</label>
+                      <select class="form-select" id="country">
+                        <option value="">Select country...</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="city" class="form-label">City</label>
+                      <input type="text" class="form-control" id="city">
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="registration_number" class="form-label">Registration Number</label>
+                      <input type="text" class="form-control" id="registration_number">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="tax_id" class="form-label">Tax ID</label>
+                      <input type="text" class="form-control" id="tax_id">
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="minimum_quantity" class="form-label">Minimum Quantity</label>
+                      <input type="number" class="form-control" id="minimum_quantity" min="0">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Lead Time (Days)</label>
+                      <div class="row">
+                        <div class="col-6">
+                          <input type="number" class="form-control" id="min_days" placeholder="Min" min="0">
+                        </div>
+                        <div class="col-6">
+                          <input type="number" class="form-control" id="max_days" placeholder="Max" min="0">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="verified" role="switch">
+                        <label class="form-check-label" for="verified">
+                          Verified
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="vetted" role="switch">
+                        <label class="form-check-label" for="vetted">
+                          Vetted
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="store_front_cover_photo" class="form-label">Store Front Cover Photo</label>
+                      <input type="file" class="form-control" id="store_front_cover_photo" accept="image/*">
+                      <small class="form-text text-muted">Leave empty when editing to keep current photo</small>
+                      <div id="coverPhotoPreview" class="mt-2"></div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="store_front_logo" class="form-label">Store Front Logo</label>
+                      <input type="file" class="form-control" id="store_front_logo" accept="image/*">
+                      <small class="form-text text-muted">Leave empty when editing to keep current logo</small>
+                      <div id="frontLogoPreview" class="mt-2"></div>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="personal_id" class="form-label">Personal ID Document</label>
+                    <input type="file" class="form-control" id="personal_id" accept="image/*,.pdf">
+                    <small class="form-text text-muted">Leave empty when editing to keep current document</small>
+                    <div id="personalIdPreview" class="mt-2"></div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="certifications" class="form-label">Certifications</label>
+                    <input type="file" class="form-control" id="certifications" accept="image/*,.pdf" multiple>
+                    <small class="form-text text-muted">You can select multiple files. New files will be added to existing ones.</small>
+                    <div id="certificationsPreview" class="mt-2"></div>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFactory()">Save Factory</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Permissions Helper Script (must be loaded first) -->
+  <script src="/js/permissions.js"></script>
+  
+  <!-- Shared Sidebar Component -->
+  <script src="/js/sidebar.js"></script>
+
+  <script>
+    const API_BASE = '/factories/api';
+    let factoriesModal;
+    let currentFactories = [];
+
+    // Country mapping
+    const countryNameToCode = {
+      'Afghanistan': 'AF', 'Albania': 'AL', 'Algeria': 'DZ', 'Andorra': 'AD', 'Angola': 'AO',
+      'Antigua and Barbuda': 'AG', 'Argentina': 'AR', 'Armenia': 'AM', 'Australia': 'AU',
+      'Austria': 'AT', 'Azerbaijan': 'AZ', 'Bahamas': 'BS', 'Bahrain': 'BH', 'Bangladesh': 'BD',
+      'Barbados': 'BB', 'Belarus': 'BY', 'Belgium': 'BE', 'Belize': 'BZ', 'Benin': 'BJ',
+      'Bhutan': 'BT', 'Bolivia': 'BO', 'Bosnia and Herzegovina': 'BA', 'Botswana': 'BW',
+      'Brazil': 'BR', 'Brunei': 'BN', 'Bulgaria': 'BG', 'Burkina Faso': 'BF', 'Burundi': 'BI',
+      'Cambodia': 'KH', 'Cameroon': 'CM', 'Canada': 'CA', 'Cape Verde': 'CV',
+      'Central African Republic': 'CF', 'Chad': 'TD', 'Chile': 'CL', 'China': 'CN',
+      'Colombia': 'CO', 'Comoros': 'KM', 'Congo': 'CG', 'Costa Rica': 'CR', 'Croatia': 'HR',
+      'Cuba': 'CU', 'Cyprus': 'CY', 'Czech Republic': 'CZ', 'Denmark': 'DK', 'Djibouti': 'DJ',
+      'Dominica': 'DM', 'Dominican Republic': 'DO', 'East Timor': 'TL', 'Ecuador': 'EC',
+      'Egypt': 'EG', 'El Salvador': 'SV', 'Equatorial Guinea': 'GQ', 'Eritrea': 'ER',
+      'Estonia': 'EE', 'Ethiopia': 'ET', 'Fiji': 'FJ', 'Finland': 'FI', 'France': 'FR',
+      'Gabon': 'GA', 'Gambia': 'GM', 'Georgia': 'GE', 'Germany': 'DE', 'Ghana': 'GH',
+      'Greece': 'GR', 'Grenada': 'GD', 'Guatemala': 'GT', 'Guinea': 'GN', 'Guinea-Bissau': 'GW',
+      'Guyana': 'GY', 'Haiti': 'HT', 'Honduras': 'HN', 'Hungary': 'HU', 'Iceland': 'IS',
+      'India': 'IN', 'Indonesia': 'ID', 'Iran': 'IR', 'Iraq': 'IQ', 'Ireland': 'IE',
+      'Israel': 'IL', 'Italy': 'IT', 'Jamaica': 'JM', 'Japan': 'JP', 'Jordan': 'JO',
+      'Kazakhstan': 'KZ', 'Kenya': 'KE', 'Kiribati': 'KI', 'North Korea': 'KP', 'South Korea': 'KR',
+      'Kuwait': 'KW', 'Kyrgyzstan': 'KG', 'Laos': 'LA', 'Latvia': 'LV', 'Lebanon': 'LB',
+      'Lesotho': 'LS', 'Liberia': 'LR', 'Libya': 'LY', 'Liechtenstein': 'LI', 'Lithuania': 'LT',
+      'Luxembourg': 'LU', 'Madagascar': 'MG', 'Malawi': 'MW', 'Malaysia': 'MY', 'Maldives': 'MV',
+      'Mali': 'ML', 'Malta': 'MT', 'Marshall Islands': 'MH', 'Mauritania': 'MR', 'Mauritius': 'MU',
+      'Mexico': 'MX', 'Micronesia': 'FM', 'Moldova': 'MD', 'Monaco': 'MC', 'Mongolia': 'MN',
+      'Montenegro': 'ME', 'Morocco': 'MA', 'Mozambique': 'MZ', 'Myanmar': 'MM', 'Namibia': 'NA',
+      'Nauru': 'NR', 'Nepal': 'NP', 'Netherlands': 'NL', 'New Zealand': 'NZ', 'Nicaragua': 'NI',
+      'Niger': 'NE', 'Nigeria': 'NG', 'North Macedonia': 'MK', 'Norway': 'NO', 'Oman': 'OM',
+      'Pakistan': 'PK', 'Palau': 'PW', 'Panama': 'PA', 'Papua New Guinea': 'PG', 'Paraguay': 'PY',
+      'Peru': 'PE', 'Philippines': 'PH', 'Poland': 'PL', 'Portugal': 'PT', 'Qatar': 'QA',
+      'Romania': 'RO', 'Russia': 'RU', 'Rwanda': 'RW', 'Saint Kitts and Nevis': 'KN',
+      'Saint Lucia': 'LC', 'Saint Vincent and the Grenadines': 'VC', 'Samoa': 'WS',
+      'San Marino': 'SM', 'Sao Tome and Principe': 'ST', 'Saudi Arabia': 'SA', 'Senegal': 'SN',
+      'Serbia': 'RS', 'Seychelles': 'SC', 'Sierra Leone': 'SL', 'Singapore': 'SG',
+      'Slovakia': 'SK', 'Slovenia': 'SI', 'Solomon Islands': 'SB', 'Somalia': 'SO',
+      'South Africa': 'ZA', 'South Sudan': 'SS', 'Spain': 'ES', 'Sri Lanka': 'LK',
+      'Sudan': 'SD', 'Suriname': 'SR', 'Sweden': 'SE', 'Switzerland': 'CH', 'Syria': 'SY',
+      'Taiwan': 'TW', 'Tajikistan': 'TJ', 'Tanzania': 'TZ', 'Thailand': 'TH', 'Togo': 'TG',
+      'Tonga': 'TO', 'Trinidad and Tobago': 'TT', 'Tunisia': 'TN', 'Turkey': 'TR',
+      'Turkmenistan': 'TM', 'Tuvalu': 'TV', 'Uganda': 'UG', 'Ukraine': 'UA',
+      'United Arab Emirates': 'AE', 'United Kingdom': 'GB', 'United States': 'US',
+      'Uruguay': 'UY', 'Uzbekistan': 'UZ', 'Vanuatu': 'VU', 'Vatican City': 'VA',
+      'Venezuela': 'VE', 'Vietnam': 'VN', 'Yemen': 'YE', 'Zambia': 'ZM', 'Zimbabwe': 'ZW'
+    };
+
+    const countryCodeToName = {};
+    Object.keys(countryNameToCode).forEach(name => {
+      countryCodeToName[countryNameToCode[name]] = name;
+    });
+
+    const countries = Object.keys(countryNameToCode).sort();
+
+    function getCountryCode(countryName) {
+      return countryNameToCode[countryName] || countryName;
+    }
+
+    function getCountryName(countryCode) {
+      return countryCodeToName[countryCode] || countryCode;
+    }
+
+    function populateCountryDropdown() {
+      const select = document.getElementById('country');
+      select.innerHTML = '<option value="">Select country...</option>';
+      countries.forEach(countryName => {
+        const option = document.createElement('option');
+        option.value = countryName;
+        option.textContent = countryName;
+        select.appendChild(option);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      factoriesModal = new bootstrap.Modal(document.getElementById('factoryModal'));
+      populateCountryDropdown();
+      loadFactories();
+
+      // Setup image preview for cover photo
+      document.getElementById('store_front_cover_photo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            document.getElementById('coverPhotoPreview').innerHTML = `
+              <img src="${e.target.result}" class="logo-preview" alt="Cover Photo Preview">
+            `;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Setup image preview for front logo
+      document.getElementById('store_front_logo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            document.getElementById('frontLogoPreview').innerHTML = `
+              <img src="${e.target.result}" class="logo-preview" alt="Front Logo Preview">
+            `;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Setup preview for personal_id
+      document.getElementById('personal_id').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              document.getElementById('personalIdPreview').innerHTML = `
+                <img src="${e.target.result}" class="logo-preview" alt="Personal ID Preview">
+              `;
+            };
+            reader.readAsDataURL(file);
+          } else {
+            document.getElementById('personalIdPreview').innerHTML = `
+              <div class="alert alert-info">
+                <i class="bi bi-file-earmark"></i> ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+              </div>
+            `;
+          }
+        }
+      });
+
+      // Setup preview for certifications
+      document.getElementById('certifications').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        const preview = document.getElementById('certificationsPreview');
+        preview.innerHTML = '';
+        
+        files.forEach(file => {
+          const fileDiv = document.createElement('div');
+          fileDiv.className = 'mb-2';
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              fileDiv.innerHTML = `
+                <img src="${e.target.result}" class="logo-preview" alt="${file.name}" style="max-width: 100px;">
+                <small class="d-block">${file.name}</small>
+              `;
+              preview.appendChild(fileDiv);
+            };
+            reader.readAsDataURL(file);
+          } else {
+            fileDiv.innerHTML = `
+              <div class="alert alert-info py-2">
+                <i class="bi bi-file-earmark"></i> ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+              </div>
+            `;
+            preview.appendChild(fileDiv);
+          }
+        });
+      });
+      
+      // Load user role and hide orders menu item if user doesn't have permission
+      (async () => {
+        try {
+          // Fetch current user info including role
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.user) {
+              const userRole = result.user.role;
+              if (userRole) {
+                setUserRole(userRole);
+                
+                // Wait for sidebar to be rendered, then hide orders menu item if needed
+                const checkAndHideOrdersMenuItem = () => {
+                  const ordersMenuItem = document.getElementById('orders-menu-item');
+                  if (ordersMenuItem) {
+                    if (hasPermission('view_orders', userRole)) {
+                      ordersMenuItem.style.display = 'block';
+                    } else {
+                      ordersMenuItem.style.display = 'none';
+                    }
+                  } else {
+                    // Retry after a short delay if sidebar not ready yet
+                    setTimeout(checkAndHideOrdersMenuItem, 50);
+                  }
+                };
+                checkAndHideOrdersMenuItem();
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error loading user permissions:', error);
+          // On error, hide the orders menu item for safety
+          const checkAndHideOrdersMenuItem = () => {
+            const ordersMenuItem = document.getElementById('orders-menu-item');
+            if (ordersMenuItem) {
+              ordersMenuItem.style.display = 'none';
+            } else {
+              // Retry after a short delay if sidebar not ready yet
+              setTimeout(checkAndHideOrdersMenuItem, 50);
+            }
+          };
+          checkAndHideOrdersMenuItem();
+        }
+      })();
+    });
+
+    function showAlert(message, type = 'success') {
+      const alertContainer = document.getElementById('alert-container');
+      const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `;
+      alertContainer.innerHTML = alertHtml;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 5000);
+    }
+
+    async function loadFactories() {
+      try {
+        const response = await fetch(API_BASE);
+        const result = await response.json();
+        
+        if (result.success) {
+          currentFactories = result.data || [];
+          renderFactories();
+        } else {
+          showAlert('Failed to load factories', 'danger');
+        }
+      } catch (error) {
+        console.error('Error loading factories:', error);
+        showAlert('Error loading factories', 'danger');
+      }
+    }
+
+    function renderFactories() {
+      const tbody = document.getElementById('factoriesTableBody');
+      
+      if (currentFactories.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted">
+              No factories found. Click "Add New Factory" to create one.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = currentFactories.map(factory => {
+        const factoryName = factory.content?.factory_name || 'N/A';
+        const email = factory.email || 'N/A';
+        const coverPhoto = factory.content?.store_front_cover_photo?.url || factory.content?.store_front_cover_photo?.file?.url;
+        const frontLogo = factory.content?.store_front_logo?.url || factory.content?.store_front_logo?.file?.url;
+        
+        return `
+          <tr>
+            <td>${factoryName}</td>
+            <td>${email}</td>
+            <td>
+              ${coverPhoto ? `<img src="${coverPhoto}" class="logo-preview" alt="Cover Photo">` : '<span class="text-muted">No photo</span>'}
+            </td>
+            <td>
+              ${frontLogo ? `<img src="${frontLogo}" class="logo-preview" alt="Front Logo">` : '<span class="text-muted">No logo</span>'}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-primary me-2" onclick="editFactory('${factory.id}')">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteFactory('${factory.id}')">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function showFactoryForm(factoryId = null) {
+      const form = document.getElementById('factoryForm');
+      const modalTitle = document.getElementById('factoryModalTitle');
+      const coverPhotoPreview = document.getElementById('coverPhotoPreview');
+      const frontLogoPreview = document.getElementById('frontLogoPreview');
+      const personalIdPreview = document.getElementById('personalIdPreview');
+      const certificationsPreview = document.getElementById('certificationsPreview');
+      
+      form.reset();
+      document.getElementById('factoryId').value = '';
+      coverPhotoPreview.innerHTML = '';
+      frontLogoPreview.innerHTML = '';
+      personalIdPreview.innerHTML = '';
+      certificationsPreview.innerHTML = '';
+      
+      if (factoryId) {
+        modalTitle.textContent = 'Edit Factory';
+        const factory = currentFactories.find(f => f.id === factoryId);
+        if (factory) {
+          document.getElementById('factoryId').value = factory.id;
+          document.getElementById('factory_name').value = factory.content?.factory_name || '';
+          document.getElementById('email').value = factory.email || '';
+          document.getElementById('city').value = factory.content?.city || '';
+          document.getElementById('registration_number').value = factory.content?.registration_number || '';
+          document.getElementById('tax_id').value = factory.content?.tax_id || '';
+          document.getElementById('minimum_quantity').value = factory.content?.minimum_quantity || '';
+          
+          // Handle lead_time object
+          const leadTime = factory.content?.lead_time || {};
+          document.getElementById('min_days').value = leadTime.min_days || '';
+          document.getElementById('max_days').value = leadTime.max_days || '';
+          
+          document.getElementById('verified').checked = factory.content?.verified === true;
+          document.getElementById('vetted').checked = factory.content?.vetted === true;
+          
+          // Set country dropdown
+          const countryCode = factory.content?.country || '';
+          const countryName = countryCode ? getCountryName(countryCode) : '';
+          document.getElementById('country').value = countryName;
+          
+          // Show existing photos/logos
+          const coverPhoto = factory.content?.store_front_cover_photo?.url || factory.content?.store_front_cover_photo?.file?.url;
+          const frontLogo = factory.content?.store_front_logo?.url || factory.content?.store_front_logo?.file?.url;
+          
+          if (coverPhoto) {
+            coverPhotoPreview.innerHTML = `
+              <label class="form-label text-muted">Current Photo:</label><br>
+              <img src="${coverPhoto}" class="logo-preview" alt="Current Cover Photo">
+            `;
+          }
+          
+          if (frontLogo) {
+            frontLogoPreview.innerHTML = `
+              <label class="form-label text-muted">Current Logo:</label><br>
+              <img src="${frontLogo}" class="logo-preview" alt="Current Front Logo">
+            `;
+          }
+
+          // Show existing personal_id
+          const personalId = factory.content?.personal_id;
+          if (personalId) {
+            const personalIdUrl = personalId.url || personalId.file?.url;
+            if (personalIdUrl) {
+              if (personalId.mimeType?.startsWith('image/') || personalIdUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                personalIdPreview.innerHTML = `
+                  <label class="form-label text-muted">Current Personal ID:</label><br>
+                  <img src="${personalIdUrl}" class="logo-preview" alt="Current Personal ID">
+                  <br><small><a href="${personalIdUrl}" target="_blank">View/Download</a></small>
+                `;
+              } else {
+                personalIdPreview.innerHTML = `
+                  <label class="form-label text-muted">Current Personal ID:</label><br>
+                  <div class="alert alert-info">
+                    <i class="bi bi-file-earmark"></i> <a href="${personalIdUrl}" target="_blank">${personalId.filename || personalId.originalFilename || 'View Document'}</a>
+                  </div>
+                `;
+              }
+            }
+          }
+
+          // Show existing certifications
+          const certifications = factory.content?.certifications || [];
+          if (certifications.length > 0) {
+            let certsHtml = '<label class="form-label text-muted">Current Certifications:</label><br>';
+            certifications.forEach((cert, index) => {
+              const certUrl = cert.url || cert.file?.url;
+              if (certUrl) {
+                if (cert.mimeType?.startsWith('image/') || certUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                  certsHtml += `
+                    <div class="mb-2">
+                      <img src="${certUrl}" class="logo-preview" alt="Certification ${index + 1}" style="max-width: 100px;">
+                      <br><small><a href="${certUrl}" target="_blank">${cert.filename || cert.originalFilename || `Certification ${index + 1}`}</a></small>
+                    </div>
+                  `;
+                } else {
+                  certsHtml += `
+                    <div class="alert alert-info py-2 mb-2">
+                      <i class="bi bi-file-earmark"></i> <a href="${certUrl}" target="_blank">${cert.filename || cert.originalFilename || `Certification ${index + 1}`}</a>
+                    </div>
+                  `;
+                }
+              }
+            });
+            certificationsPreview.innerHTML = certsHtml;
+          }
+        }
+      } else {
+        modalTitle.textContent = 'Add Factory';
+        document.getElementById('verified').checked = false;
+        document.getElementById('vetted').checked = false;
+      }
+      
+      factoriesModal.show();
+    }
+
+    async function saveFactory() {
+      const form = document.getElementById('factoryForm');
+      
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const factoryId = document.getElementById('factoryId').value;
+      const formData = new FormData();
+      
+      formData.append('factory_name', document.getElementById('factory_name').value);
+      formData.append('email', document.getElementById('email').value);
+      
+      const countryName = document.getElementById('country').value;
+      if (countryName) {
+        const countryCode = getCountryCode(countryName);
+        formData.append('country', countryCode);
+      }
+      
+      formData.append('city', document.getElementById('city').value || '');
+      formData.append('registration_number', document.getElementById('registration_number').value || '');
+      formData.append('tax_id', document.getElementById('tax_id').value || '');
+      formData.append('minimum_quantity', document.getElementById('minimum_quantity').value || '');
+      
+      // Only append min_days and max_days if they have values
+      const minDays = document.getElementById('min_days').value.trim();
+      const maxDays = document.getElementById('max_days').value.trim();
+      console.log('Form values - min_days:', minDays, 'max_days:', maxDays);
+      
+      if (minDays) {
+        formData.append('min_days', minDays);
+      }
+      if (maxDays) {
+        formData.append('max_days', maxDays);
+      }
+      
+      formData.append('verified', document.getElementById('verified').checked);
+      formData.append('vetted', document.getElementById('vetted').checked);
+      
+      // Debug: Log all FormData entries
+      console.log('FormData entries:');
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]));
+      }
+      
+      const coverPhotoFile = document.getElementById('store_front_cover_photo').files[0];
+      if (coverPhotoFile) {
+        formData.append('store_front_cover_photo', coverPhotoFile);
+      }
+      
+      const frontLogoFile = document.getElementById('store_front_logo').files[0];
+      if (frontLogoFile) {
+        formData.append('store_front_logo', frontLogoFile);
+      }
+
+      const personalIdFile = document.getElementById('personal_id').files[0];
+      if (personalIdFile) {
+        formData.append('personal_id', personalIdFile);
+      }
+
+      const certificationFiles = document.getElementById('certifications').files;
+      if (certificationFiles && certificationFiles.length > 0) {
+        Array.from(certificationFiles).forEach(file => {
+          formData.append('certifications', file);
+        });
+      }
+
+      try {
+        const url = factoryId ? `${API_BASE}/${factoryId}` : API_BASE;
+        const method = factoryId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert(factoryId ? 'Factory updated successfully' : 'Factory created successfully');
+          factoriesModal.hide();
+          loadFactories();
+        } else {
+          showAlert(result.message || 'Failed to save factory', 'danger');
+        }
+      } catch (error) {
+        console.error('Error saving factory:', error);
+        showAlert('Error saving factory', 'danger');
+      }
+    }
+
+    function editFactory(factoryId) {
+      showFactoryForm(factoryId);
+    }
+
+    async function deleteFactory(factoryId) {
+      if (!confirm('Are you sure you want to delete this factory?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/${factoryId}`, {
+          method: 'DELETE'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert('Factory deleted successfully');
+          loadFactories();
+        } else {
+          showAlert(result.message || 'Failed to delete factory', 'danger');
+        }
+      } catch (error) {
+        console.error('Error deleting factory:', error);
+        showAlert('Error deleting factory', 'danger');
+      }
+    }
+  </script>
+</body>
+
+</html>
+
