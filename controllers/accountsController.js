@@ -5,6 +5,57 @@ const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 const ActivityLogger = require('../services/activityLogger');
 
+/**
+ * Validate phone number format
+ * - Must be numeric only (no + sign, no spaces, no dashes)
+ * - Must be at least 10 digits (minimum for country code + phone)
+ * - Maximum 15 digits (international standard)
+ * @param {string} phone - Phone number to validate
+ * @returns {object} - { valid: boolean, error: string }
+ */
+function validatePhoneNumber(phone) {
+  if (!phone || phone.trim() === '') {
+    return { valid: true, error: null }; // Phone is optional
+  }
+
+  // Remove any whitespace
+  const cleanedPhone = phone.trim();
+
+  // Check if contains + sign
+  if (cleanedPhone.includes('+')) {
+    return {
+      valid: false,
+      error: 'Phone number cannot contain "+" sign. Enter phone number with country code (no + sign). Example: 201234567890 (Egypt: 20 + phone number)'
+    };
+  }
+
+  // Check if contains only digits
+  if (!/^\d+$/.test(cleanedPhone)) {
+    return {
+      valid: false,
+      error: 'Phone number must contain only digits (no spaces, dashes, or special characters). Example: 201234567890'
+    };
+  }
+
+  // Check minimum length (at least 10 digits for country code + phone)
+  if (cleanedPhone.length < 10) {
+    return {
+      valid: false,
+      error: 'Phone number must be at least 10 digits long (including country code). Example: 201234567890 (Egypt: 20 + phone number)'
+    };
+  }
+
+  // Check maximum length (international standard is 15 digits)
+  if (cleanedPhone.length > 15) {
+    return {
+      valid: false,
+      error: 'Phone number cannot exceed 15 digits'
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
 
 exports.getOrdersByUserId = async (req, res) => {
     const { userId } = req.params;
@@ -233,6 +284,19 @@ exports.updateAddress = async (req, res) => {
         });
     }
 
+    // Validate phone number if provided
+    let cleanedPhone = phone;
+    if (phone !== undefined && phone !== null && phone !== '') {
+        const phoneValidation = validatePhoneNumber(phone);
+        if (!phoneValidation.valid) {
+            return res.status(400).json({
+                success: false,
+                message: phoneValidation.error
+            });
+        }
+        cleanedPhone = phone.trim();
+    }
+
     try {
         const updatedAddress = await swell.put(`/accounts:addresses/${addressId}`, {
             parent_id,
@@ -244,7 +308,7 @@ exports.updateAddress = async (req, res) => {
             first_name,
             last_name,
             name,
-            phone,
+            phone: cleanedPhone,
             state,
             zip,
             active
@@ -345,6 +409,19 @@ exports.createAddress = async (req, res) => {
         });
     }
 
+    // Validate phone number if provided
+    let cleanedPhone = phone;
+    if (phone !== undefined && phone !== null && phone !== '') {
+        const phoneValidation = validatePhoneNumber(phone);
+        if (!phoneValidation.valid) {
+            return res.status(400).json({
+                success: false,
+                message: phoneValidation.error
+            });
+        }
+        cleanedPhone = phone.trim();
+    }
+
     try {
         const newAddress = await swell.post('/accounts:addresses', {
             parent_id,
@@ -356,7 +433,7 @@ exports.createAddress = async (req, res) => {
             first_name,
             last_name,
             name,
-            phone,
+            phone: cleanedPhone,
             state,
             zip,
             active: true

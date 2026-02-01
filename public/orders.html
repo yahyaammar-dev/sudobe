@@ -90,9 +90,14 @@
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h2><i class="bi bi-receipt me-2"></i>Orders Management</h2>
+          <div class="d-flex gap-2">
           <button class="btn btn-primary" onclick="showOrderForm()">
             <i class="bi bi-plus-circle me-2"></i>Create New Order
           </button>
+            <a href="/api/auth/logout" class="btn btn-outline-secondary">
+              <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </a>
+          </div>
         </div>
 
         <!-- Filters -->
@@ -294,33 +299,44 @@
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label for="content_order_status" class="form-label">Order Status</label>
-                        <input type="text" class="form-control" id="content_order_status" placeholder="e.g., Processing">
+                        <select class="form-select" id="content_order_status">
+                          <option value="">Select Status</option>
+                          <option value="order_placed">Order Placed</option>
+                          <option value="payment_required">Payment Required</option>
+                          <option value="pending_payment">Pending Payment</option>
+                          <option value="payment_recieved">Payment Received</option>
+                          <option value="order_inspected">Order Inspected</option>
+                          <option value="order_shipped">Order Shipped</option>
+                          <option value="order_cancelled">Order Cancelled</option>
+                          <option value="order_returned">Order Returned</option>
+                          <option value="order_delivered">Order Delivered</option>
+                        </select>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="factory_dispatch">
                         <label for="factory_dispatch" class="form-label">Factory Dispatch</label>
                         <input type="text" class="form-control" id="factory_dispatch" placeholder="Factory dispatch info">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="date_of_shipping">
                         <label for="date_of_shipping" class="form-label">Date of Shipping</label>
                         <input type="date" class="form-control" id="date_of_shipping">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="delivery_date">
                         <label for="delivery_date" class="form-label">Delivery Date</label>
                         <input type="date" class="form-control" id="delivery_date">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="transfer_id">
                         <label for="transfer_id" class="form-label">Transfer ID</label>
                         <input type="text" class="form-control" id="transfer_id" placeholder="Transfer ID">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="date_of_payment">
                         <label for="date_of_payment" class="form-label">Date of Payment</label>
                         <input type="date" class="form-control" id="date_of_payment">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="production_duration">
                         <label for="production_duration" class="form-label">Production Duration (days)</label>
                         <input type="number" class="form-control" id="production_duration" min="0" placeholder="Days">
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="shipping_company_name">
                         <label for="shipping_company_name" class="form-label">Shipping Company</label>
                         <select class="form-select" id="shipping_company_name">
                           <option value="">Select shipping company...</option>
@@ -333,32 +349,32 @@
                   <div class="mb-4">
                     <h5>Documents & Files</h5>
                     <div class="row">
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="shipping_qutation">
                         <label for="shipping_qutation" class="form-label">Shipping Quotation</label>
                         <input type="file" class="form-control" id="shipping_qutation" accept="*/*">
                         <div id="shipping_qutation_preview" class="mt-2"></div>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="dhl_invoice">
                         <label for="dhl_invoice" class="form-label">DHL Invoice</label>
                         <input type="file" class="form-control" id="dhl_invoice" accept="*/*">
                         <div id="dhl_invoice_preview" class="mt-2"></div>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="inspection_report">
                         <label for="inspection_report" class="form-label">Inspection Report</label>
                         <input type="file" class="form-control" id="inspection_report" accept="*/*">
                         <div id="inspection_report_preview" class="mt-2"></div>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="invoice_by_factory">
                         <label for="invoice_by_factory" class="form-label">Invoice by Factory</label>
                         <input type="file" class="form-control" id="invoice_by_factory" accept="*/*">
                         <div id="invoice_by_factory_preview" class="mt-2"></div>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="shipping_policy">
                         <label for="shipping_policy" class="form-label">Shipping Policy</label>
                         <input type="file" class="form-control" id="shipping_policy" accept="*/*">
                         <div id="shipping_policy_preview" class="mt-2"></div>
                       </div>
-                      <div class="col-md-6 mb-3">
+                      <div class="col-md-6 mb-3" data-field="other_documents">
                         <label for="other_documents" class="form-label">Other Documents (Multiple)</label>
                         <input type="file" class="form-control" id="other_documents" multiple accept="*/*">
                         <div id="other_documents_preview" class="mt-2"></div>
@@ -452,6 +468,89 @@
     // List of country names for dropdown (sorted)
     const countries = Object.keys(countryNameToCode).sort();
 
+    // Field visibility configuration based on order status
+    // Required inputs from ops team mapped to field names
+    const FIELD_VISIBILITY_CONFIG = {
+      'order_placed': [
+        // NA - No required inputs
+      ],
+      'payment_required': [
+        'factory_dispatch',
+        'date_of_shipping',
+        'invoice_by_factory'
+      ],
+      'pending_payment': [
+        'transfer_id'
+      ],
+      'payment_recieved': [
+        'date_of_payment',
+        'other_documents' // optional
+      ],
+      'order_inspected': [
+        'inspection_report',
+        'other_documents' // optional
+      ],
+      'order_shipped': [
+        'date_of_shipping',
+        'transfer_id', // shipment tracking number
+        'shipping_qutation', // bill of lading
+        'other_documents' // optional
+      ],
+      'order_cancelled': [
+        // Add any cancellation-specific fields if needed
+      ],
+      'order_returned': [
+        // Add any return-specific fields if needed
+      ],
+      'order_delivered': [
+        // Show all relevant fields for delivered orders
+        'date_of_payment',
+        'factory_dispatch',
+        'date_of_shipping',
+        'delivery_date',
+        'transfer_id',
+        'shipping_company_name',
+        'shipping_qutation',
+        'dhl_invoice',
+        'inspection_report',
+        'invoice_by_factory',
+        'shipping_policy',
+        'other_documents'
+      ]
+    };
+
+    /**
+     * Show/hide fields based on order status
+     * @param {string} orderStatus - The current order status
+     */
+    function updateFieldVisibility(orderStatus) {
+      // Get all fields with data-field attribute
+      const allFields = document.querySelectorAll('[data-field]');
+      
+      // If no status or empty status, hide all fields
+      if (!orderStatus || orderStatus === '') {
+        allFields.forEach(field => {
+          field.style.display = 'none';
+        });
+        return;
+      }
+
+      // Get visible fields for this status
+      const visibleFields = FIELD_VISIBILITY_CONFIG[orderStatus] || [];
+
+      // Show/hide fields based on configuration
+      allFields.forEach(field => {
+        const fieldName = field.getAttribute('data-field');
+        if (visibleFields.includes(fieldName)) {
+          field.style.display = ''; // Show (use default display)
+        } else {
+          field.style.display = 'none'; // Hide
+        }
+      });
+
+      console.log(`[Field Visibility] Updated for status: ${orderStatus}, Visible fields:`, visibleFields);
+    }
+
     // Helper functions
     function getCountryCode(countryName) {
       return countryNameToCode[countryName] || countryName;
@@ -489,6 +588,14 @@
       loadProducts();
       loadOrders();
       populateShippingCompanyDropdown();
+      
+      // Add event listener to order status dropdown for field visibility
+      const orderStatusSelect = document.getElementById('content_order_status');
+      if (orderStatusSelect) {
+        orderStatusSelect.addEventListener('change', function() {
+          updateFieldVisibility(this.value);
+        });
+      }
     });
 
     function showAlert(message, type = 'success') {
@@ -725,6 +832,9 @@
       itemCounter = 0;
       statusFieldContainer.style.display = orderId ? 'block' : 'none';
       
+      // Reset field visibility (hide all fields for new order)
+      updateFieldVisibility('');
+      
       // Clear file previews
       document.getElementById('shipping_qutation_preview').innerHTML = '';
       document.getElementById('dhl_invoice_preview').innerHTML = '';
@@ -805,7 +915,12 @@
           
           // Load content fields
           const content = order.content || {};
-          document.getElementById('content_order_status').value = content.order_status || '';
+          const orderStatus = content.order_status || '';
+          document.getElementById('content_order_status').value = orderStatus;
+          
+          // Update field visibility based on order status
+          updateFieldVisibility(orderStatus);
+          
           document.getElementById('factory_dispatch').value = content.factory_dispatch || '';
           document.getElementById('date_of_shipping').value = content.date_of_shipping || '';
           document.getElementById('delivery_date').value = content.delivery_date || '';

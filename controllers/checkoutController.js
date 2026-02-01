@@ -591,6 +591,9 @@ exports.getOrderDetails = async (req, res) => {
                 originalFilename: doc.filename
             }));
         } else {
+            if (!order.content) {
+                order.content = {};
+            }
             order.content.other_documents = [];
         }
 
@@ -959,7 +962,7 @@ exports.calculateLoad = async (req, res) => {
 // Test endpoint: Try to add custom price object to cart
 exports.testCustomPrice = async (req, res) => {
     try {
-        const { cartId } = req.params;
+        const { cartId, userId } = req.params;
 
         if (!cartId) {
             return res.status(400).json({
@@ -968,7 +971,15 @@ exports.testCustomPrice = async (req, res) => {
             });
         }
 
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID is required'
+            });
+        }
+
         console.log('[TEST CUSTOM PRICE] Testing custom price addition for cart:', cartId);
+        console.log('[TEST CUSTOM PRICE] Testing custom price addition for user:', userId);
 
         // Step 1: Get existing cart
         const cart = await swell.get(`/carts/${cartId}`);
@@ -980,46 +991,187 @@ exports.testCustomPrice = async (req, res) => {
             });
         }
 
-        console.log('[TEST CUSTOM PRICE] Existing cart items:', cart.items?.length || 0);
+        // Step 1.5: Get user account and shipping rate based on user's country
+        let user = null;
+        let shippingRate = null;
+        let midRangeShipping = 0;
 
-        // Step 2: Get subtotal and shipping from cart
-        // Log cart structure for debugging
-        console.log('[TEST CUSTOM PRICE] Cart structure - sub_total:', cart.sub_total, 'subtotal:', cart.subtotal, 'capture_total:', cart.capture_total);
-        console.log('[TEST CUSTOM PRICE] Cart structure - shipping object:', JSON.stringify(cart.shipping, null, 2));
-        console.log('[TEST CUSTOM PRICE] Cart structure - shipping_price:', cart.shipping_price);
-        console.log('[TEST CUSTOM PRICE] Cart structure - shipping_service:', cart.shipping_service);
-        
-        const subtotal = parseFloat(cart.sub_total || cart.subtotal || cart.capture_total || 0);
-        
-        // Try multiple possible shipping field locations
-        let shippingValue = 0;
-        if (cart.shipping?.price !== undefined && cart.shipping.price !== null) {
-            shippingValue = parseFloat(cart.shipping.price);
-        } else if (cart.shipping_price !== undefined && cart.shipping_price !== null) {
-            shippingValue = parseFloat(cart.shipping_price);
-        } else if (cart.shipping?.cost !== undefined && cart.shipping.cost !== null) {
-            shippingValue = parseFloat(cart.shipping.cost);
-        } else if (typeof cart.shipping === 'number') {
-            shippingValue = parseFloat(cart.shipping);
-        } else if (cart.shipping?.total !== undefined && cart.shipping.total !== null) {
-            shippingValue = parseFloat(cart.shipping.total);
+        try {
+            // Get user account
+            user = await swell.get(`/accounts/${userId}`);
+            if (!user) {
+                console.warn('[TEST CUSTOM PRICE] User not found:', userId);
+            } else {
+                console.log('[TEST CUSTOM PRICE] User found:', {
+                    id: user.id,
+                    email: user.email,
+                    phone: user.phone
+                });
+
+                // Get user's phone number
+                const phone = user.phone;
+                if (phone) {
+                    try {
+                        // Get country code from phone number using Twilio
+                        const countryLookup = await client.lookups.v1.phoneNumbers(phone).fetch();
+                        const countryCode = countryLookup.countryCode;
+                        console.log('[TEST CUSTOM PRICE] User country code:', countryCode);
+
+                        // Fetch shipping rate for this country
+                        const ratesResponse = await swell.get('/content/shipping-rates', {
+                            limit: 1000,
+                            where: {
+                                'content.country_name': countryCode
+                            }
+                        });
+
+                        // Get the first matching shipping rate
+                        if (ratesResponse.results && ratesResponse.results.length > 0) {
+                            const rate = ratesResponse.results[0];
+                            shippingRate = {
+                                id: rate.id,
+                                country_code: countryCode,
+                                min_rate: parseFloat(rate.content?.min_rate) || 0,
+                                max_rate: parseFloat(rate.content?.max_rate) || 0
+                            };
+
+                            // Calculate mid-range shipping rate
+                            if (shippingRate.min_rate > 0 && shippingRate.max_rate > 0) {
+                                midRangeShipping = (shippingRate.min_rate + shippingRate.max_rate) / 2;
+                                midRangeShipping = Math.round(midRangeShipping * 100) / 100; // Round to 2 decimal places
+                            } else if (shippingRate.min_rate > 0) {
+                                midRangeShipping = shippingRate.min_rate;
+                            } else if (shippingRate.max_rate > 0) {
+                                midRangeShipping = shippingRate.max_rate;
+                            }
+
+                            console.log('[TEST CUSTOM PRICE] Shipping rate found:', {
+                                country_code: countryCode,
+                                min_rate: shippingRate.min_rate,
+                                max_rate: shippingRate.max_rate,
+                                mid_range: midRangeShipping
+                            });
+                        } else {
+                            console.warn('[TEST CUSTOM PRICE] No shipping rate found for country:', countryCode);
+                        }
+                    } catch (phoneError) {
+                        console.error('[TEST CUSTOM PRICE] Error getting country from phone number:', phoneError.message);
+                    }
+                } else {
+                    console.warn('[TEST CUSTOM PRICE] User has no phone number');
+                }
+            }
+        } catch (userError) {
+            console.error('[TEST CUSTOM PRICE] Error fetching user:', userError.message);
+            // Continue execution even if user fetch fails
         }
+
+        // Step 2: Get existing items and separate platform fees from regular items FIRST
+        // This is critical - we need to calculate subtotal WITHOUT platform fees
+        const existingItems = cart.items || [];
         
-        // Ensure it's a valid number
-        const shipping = isNaN(shippingValue) ? 0 : shippingValue;
+        console.log('[TEST CUSTOM PRICE] Total existing items:', existingItems.length);
+        console.log('[TEST CUSTOM PRICE] Existing items:', JSON.stringify(existingItems.map(item => ({
+            id: item.id,
+            description: item.description,
+            name: item.name,
+            type: item.type,
+            price: item.price,
+            price_total: item.price_total
+        })), null, 2));
+        
+        // Explicitly identify ALL platform fee items first
+        const platformFeeItems = [];
+        const regularItems = [];
+        
+        existingItems.forEach(item => {
+            const isPlatformFee = 
+                (item.description === "Platform Fee (2.5%)" || 
+                 item.name === "Platform Fee (2.5%)" ||
+                 (item.type === "custom" && item.name && item.name.includes("Platform Fee")) ||
+                 (item.type === "custom" && item.description && item.description.includes("Platform Fee")));
+            
+            if (isPlatformFee) {
+                platformFeeItems.push(item);
+                console.log('[TEST CUSTOM PRICE] Found platform fee item to remove:', {
+                    id: item.id,
+                    description: item.description,
+                    name: item.name,
+                    price: item.price,
+                    price_total: item.price_total
+                });
+            } else {
+                regularItems.push(item);
+            }
+        });
+        
+        console.log('[TEST CUSTOM PRICE] Platform fee items found:', platformFeeItems.length);
+        console.log('[TEST CUSTOM PRICE] Regular items to keep:', regularItems.length);
+        
+        // Step 3: Calculate subtotal from REGULAR ITEMS ONLY (excluding platform fees)
+        // Sum up price_total from all regular items
+        const subtotal = regularItems.reduce((sum, item) => {
+            const itemTotal = parseFloat(item.price_total || item.price || 0);
+            return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+        }, 0);
+        
+        console.log('[TEST CUSTOM PRICE] Calculated subtotal from regular items only:', subtotal);
+        
+        // Step 3.5: Use mid-range shipping rate from user's country (calculated in Step 1.5)
+        // If we couldn't get shipping rate from user's country, fall back to cart's shipping
+        let shipping = midRangeShipping;
+        
+        if (shipping === 0) {
+            // Fallback: Try to get shipping from cart if we couldn't get it from user's country
+            let shippingValue = 0;
+            if (cart.shipping?.price !== undefined && cart.shipping.price !== null) {
+                shippingValue = parseFloat(cart.shipping.price);
+            } else if (cart.shipping_price !== undefined && cart.shipping_price !== null) {
+                shippingValue = parseFloat(cart.shipping_price);
+            } else if (cart.shipping?.cost !== undefined && cart.shipping.cost !== null) {
+                shippingValue = parseFloat(cart.shipping.cost);
+            } else if (typeof cart.shipping === 'number') {
+                shippingValue = parseFloat(cart.shipping);
+            } else if (cart.shipping?.total !== undefined && cart.shipping.total !== null) {
+                shippingValue = parseFloat(cart.shipping.total);
+            }
+            shipping = isNaN(shippingValue) ? 0 : shippingValue;
+            console.log('[TEST CUSTOM PRICE] Using cart shipping (fallback):', shipping);
+        } else {
+            console.log('[TEST CUSTOM PRICE] Using mid-range shipping from user country:', shipping);
+        }
 
-        console.log('[TEST CUSTOM PRICE] Subtotal:', subtotal, 'Shipping:', shipping);
-
-        // Step 3: Calculate 2.5% platform fee on (subtotal + shipping)
+        // Step 4: Calculate 2.5% platform fee on (subtotal + shipping)
+        // Now subtotal excludes old platform fees, and shipping is mid-range from user's country
         const platformFee = (subtotal + shipping) * 0.025;
         const roundedPlatformFee = Math.round(platformFee * 100) / 100; // Round to 2 decimal places
 
-        console.log('[TEST CUSTOM PRICE] Calculated platform fee (2.5%):', roundedPlatformFee);
+        console.log('[TEST CUSTOM PRICE] Calculated platform fee (2.5% of subtotal + shipping):', roundedPlatformFee);
+        
+        // Step 5: Explicitly DELETE all existing platform fee items by their IDs
+        // Swell keeps items with IDs when updating, so we must delete them first
+        if (platformFeeItems.length > 0) {
+            console.log('[TEST CUSTOM PRICE] Deleting existing platform fee items by ID...');
+            for (const platformFeeItem of platformFeeItems) {
+                if (platformFeeItem.id) {
+                    try {
+                        await swell.delete(`/carts/${cartId}/items/${platformFeeItem.id}`);
+                        console.log('[TEST CUSTOM PRICE] Deleted platform fee item:', platformFeeItem.id);
+                    } catch (deleteError) {
+                        console.error('[TEST CUSTOM PRICE] Error deleting platform fee item:', platformFeeItem.id, deleteError.message);
+                        // Continue even if one deletion fails
+                    }
+                }
+            }
+            console.log('[TEST CUSTOM PRICE] Finished deleting platform fee items');
+        }
 
-        // Step 4: Get existing items
-        const existingItems = cart.items || [];
+        // Step 6: Get the cart again after deletions to ensure we have the latest state
+        const cartAfterDeletion = await swell.get(`/carts/${cartId}`);
+        const currentItems = cartAfterDeletion.items || [];
+        console.log('[TEST CUSTOM PRICE] Cart items after deletion:', currentItems.length);
 
-        // Step 5: Try to add custom price object
+        // Step 7: Try to add custom price object
         // Swell requires either product_id or description, so we use description for custom items
         const customPriceItem = {
             description: "Platform Fee (2.5%)",
@@ -1030,17 +1182,52 @@ exports.testCustomPrice = async (req, res) => {
         };
 
         console.log('[TEST CUSTOM PRICE] Attempting to add custom price item:', customPriceItem);
+        
+        // Prepare final items array (current items after deletion + new platform fee)
+        const finalItems = [
+            ...currentItems,
+            customPriceItem
+        ];
+        
+        console.log('[TEST CUSTOM PRICE] Final items array to send to Swell:', finalItems.length, 'items');
+        console.log('[TEST CUSTOM PRICE] Final items breakdown:', JSON.stringify(finalItems.map(item => ({
+            id: item.id,
+            description: item.description,
+            name: item.name,
+            type: item.type,
+            price: item.price,
+            product_id: item.product_id
+        })), null, 2));
 
         try {
             const updatedCart = await swell.put(`/carts/${cartId}`, {
-                items: [
-                    ...existingItems,
-                    customPriceItem
-                ]
+                items: finalItems
             });
 
             console.log('[TEST CUSTOM PRICE] Success! Custom price added to cart');
-            console.log('----------------------------------------------------------------------------------------->', cart);
+            console.log('[TEST CUSTOM PRICE] Updated cart items count:', updatedCart.items?.length || 0);
+            console.log('[TEST CUSTOM PRICE] Updated cart items:', JSON.stringify(updatedCart.items?.map(item => ({
+                id: item.id,
+                description: item.description,
+                name: item.name,
+                type: item.type,
+                price: item.price,
+                product_id: item.product_id
+            })) || [], null, 2));
+            
+            // Verify no duplicate platform fees exist
+            const platformFeeCount = (updatedCart.items || []).filter(item => 
+                item.description === "Platform Fee (2.5%)" || 
+                item.name === "Platform Fee (2.5%)" ||
+                (item.type === "custom" && item.name && item.name.includes("Platform Fee")) ||
+                (item.type === "custom" && item.description && item.description.includes("Platform Fee"))
+            ).length;
+            
+            console.log('[TEST CUSTOM PRICE] Platform fee items in updated cart:', platformFeeCount, '(should be 1)');
+            
+            if (platformFeeCount > 1) {
+                console.warn('[TEST CUSTOM PRICE] WARNING: Multiple platform fee items detected in cart!');
+            }
             return res.status(200).json({
                 success: true,
                 message: 'Custom price object successfully added to cart',
@@ -1050,11 +1237,18 @@ exports.testCustomPrice = async (req, res) => {
                     platformFee: roundedPlatformFee,
                     platformFeePercentage: 2.5
                 },
+                shippingRate: shippingRate ? {
+                    country_code: shippingRate.country_code,
+                    min_rate: shippingRate.min_rate,
+                    max_rate: shippingRate.max_rate,
+                    mid_range: midRangeShipping
+                } : null,
                 cart: {
                     id: updatedCart.id,
                     items: updatedCart.items,
                     item_count: updatedCart.item_count,
-                    total: updatedCart.total
+                    total: updatedCart.total,
+                    account_id: userId || null
                 },
                 customItem: customPriceItem
             });
@@ -1080,130 +1274,7 @@ exports.testCustomPrice = async (req, res) => {
     }
 };
 
-// Add custom price item to an order
-exports.addCustomPriceToOrder = async (req, res) => {
-    try {
-        const { orderId } = req.params;
 
-        if (!orderId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Order ID is required'
-            });
-        }
-
-        console.log('[ADD CUSTOM PRICE TO ORDER] Adding custom price to order:', orderId);
-
-        // Step 1: Get existing order
-        const order = await swell.get(`/orders/${orderId}`);
-        
-        if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Order not found'
-            });
-        }
-
-        console.log('[ADD CUSTOM PRICE TO ORDER] Existing order items:', order.items?.length || 0);
-
-        // Step 2: Get subtotal and shipping from order
-        // Log order structure for debugging
-        console.log('[ADD CUSTOM PRICE TO ORDER] Order structure - sub_total:', order.sub_total, 'subtotal:', order.subtotal);
-        console.log('[ADD CUSTOM PRICE TO ORDER] Order structure - shipping object:', JSON.stringify(order.shipping, null, 2));
-        console.log('[ADD CUSTOM PRICE TO ORDER] Order structure - shipping_price:', order.shipping_price);
-        
-        const subtotal = parseFloat(order.sub_total || order.subtotal || 0);
-        
-        // Try multiple possible shipping field locations
-        let shippingValue = 0;
-        if (order.shipping?.price !== undefined && order.shipping.price !== null) {
-            shippingValue = parseFloat(order.shipping.price);
-        } else if (order.shipping_price !== undefined && order.shipping_price !== null) {
-            shippingValue = parseFloat(order.shipping_price);
-        } else if (order.shipping?.cost !== undefined && order.shipping.cost !== null) {
-            shippingValue = parseFloat(order.shipping.cost);
-        } else if (typeof order.shipping === 'number') {
-            shippingValue = parseFloat(order.shipping);
-        } else if (order.shipping?.total !== undefined && order.shipping.total !== null) {
-            shippingValue = parseFloat(order.shipping.total);
-        }
-        
-        // Ensure it's a valid number
-        const shipping = isNaN(shippingValue) ? 0 : shippingValue;
-        
-        console.log('[ADD CUSTOM PRICE TO ORDER] Subtotal:', subtotal, 'Shipping:', shipping);
-
-        // Step 3: Calculate 2.5% platform fee on (subtotal + shipping)
-        const platformFee = (subtotal + shipping) * 0.025;
-        const roundedPlatformFee = Math.round(platformFee * 100) / 100; // Round to 2 decimal places
-
-        console.log('[ADD CUSTOM PRICE TO ORDER] Calculated platform fee (2.5%):', roundedPlatformFee);
-
-        // Step 4: Get existing items
-        const existingItems = order.items || [];
-
-        // Step 5: Create custom price item
-        // Swell requires either product_id or description for order items
-        const customPriceItem = {
-            description: "Platform Fee (2.5%)",
-            quantity: 1,
-            price: roundedPlatformFee,
-            name: "Platform Fee (2.5%)",
-            type: "custom"
-        };
-
-        console.log('[ADD CUSTOM PRICE TO ORDER] Attempting to add custom price item:', customPriceItem);
-
-        try {
-            const updatedOrder = await swell.put(`/orders/${orderId}`, {
-                items: [
-                    ...existingItems,
-                    customPriceItem
-                ]
-            });
-
-            console.log('[ADD CUSTOM PRICE TO ORDER] Success! Custom price added to order');
-            console.log('[ADD CUSTOM PRICE TO ORDER] Updated order:', updatedOrder.id);
-            
-            return res.status(200).json({
-                success: true,
-                message: 'Custom price item successfully added to order',
-                calculation: {
-                    subtotal: subtotal,
-                    shipping: shipping,
-                    platformFee: roundedPlatformFee,
-                    platformFeePercentage: 2.5
-                },
-                order: {
-                    id: updatedOrder.id,
-                    items: updatedOrder.items,
-                    item_count: updatedOrder.item_count,
-                    total: updatedOrder.total,
-                    sub_total: updatedOrder.sub_total
-                },
-                customItem: customPriceItem
-            });
-        } catch (swellError) {
-            console.error('[ADD CUSTOM PRICE TO ORDER] Swell API error:', swellError);
-            console.error('[ADD CUSTOM PRICE TO ORDER] Error response:', swellError.response?.data);
-            
-            return res.status(400).json({
-                success: false,
-                message: 'Failed to add custom price item to order',
-                error: swellError.message,
-                errorDetails: swellError.response?.data || swellError,
-                attemptedItem: customPriceItem
-            });
-        }
-    } catch (error) {
-        console.error('[ADD CUSTOM PRICE TO ORDER] Error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error while adding custom price to order',
-            error: error.message
-        });
-    }
-};
 
 /**
  * Parse container tracking API response and determine current location

@@ -12,14 +12,14 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
   try {
     const { toPhoneNumber } = req.body;
     console.log('Phone number:', toPhoneNumber);
-    
+
     // Debug environment variables
     console.log('Environment check:', {
       hasAccountSid: !!process.env.TWILIO_ACCOUNT_SID,
       hasAuthToken: !!process.env.TWILIO_AUTH_TOKEN,
       whatsappFrom: process.env.TWILIO_WHATSAPP_FROM
     });
-    
+
     // 1. Find user
     const result = await swell.get('/accounts', {
       where: { phone: toPhoneNumber }
@@ -43,13 +43,13 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
         contentSid: 'HXb6146d89abdf91f375080169682081fb',
         contentVariables: JSON.stringify({ "1": otp.toString() }),
       });
-      
+
       console.log('WhatsApp message sent:', waMessage.sid);
-      
+
       // 3. Wait and check status
       await new Promise(resolve => setTimeout(resolve, 4000));
       const statusCheck = await client.messages(waMessage.sid).fetch();
-      
+
       // 4. If WhatsApp failed, send SMS instead
       if (["failed", "undelivered"].includes(statusCheck.status)) {
         console.log('WhatsApp failed, sending SMS instead');
@@ -78,10 +78,10 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
           deliveryStatus: statusCheck.status
         }
       });
-      
+
     } catch (twilioError) {
       console.error('Twilio specific error:', twilioError);
-      
+
       // If WhatsApp fails, try SMS as fallback
       try {
         await client.messages.create({
@@ -89,7 +89,7 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
           from: '+17276155600',
           to: `+${toPhoneNumber}`
         });
-        
+
         // Store OTP even if WhatsApp failed
         await swell.put(`/accounts/${customer.id}`, {
           content: {
@@ -97,7 +97,7 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
             otp: otp
           }
         });
-        
+
         return res.status(200).json({
           status: true,
           otp: otp,
@@ -115,10 +115,10 @@ exports.sendOtpViaWhatsApp = async (req, res) => {
 
   } catch (err) {
     console.error('OTP send error:', err.message);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       message: 'Internal Server Error',
-      error: err.message 
+      error: err.message
     });
   }
 };
@@ -149,7 +149,7 @@ exports.verifyOtp = async (req, res) => {
     const customer = result.results[0];
     const storedOtp = customer.content?.otp;
 
-    if(otp == "1234"){
+    if (otp == "1234") {
       return res.status(200).json({
         success: true,
         message: 'OTP verified successfully',
@@ -220,7 +220,7 @@ exports.createUser = async (req, res) => {
       lastName,
       content = {}
     } = req.body;
-
+    console.log("----> Create user has been hit")
     if (!phone) {
       return res.status(400).json({
         success: false,
@@ -520,7 +520,7 @@ exports.testTwilioConnection = async (req, res) => {
     // Test basic Twilio connection
     const account = await client.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
     console.log('Twilio connection successful:', account.friendlyName);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Twilio connection successful',
@@ -554,7 +554,7 @@ exports.getUserCountry = async (req, res) => {
 
     // get country from phone number
     const country = await getCountryFromPhoneNumber(phone);
-    
+
     // Fetch shipping rate for the user's country
     let shippingRate = null;
     try {
@@ -564,7 +564,7 @@ exports.getUserCountry = async (req, res) => {
           'content.country_name': country
         }
       });
-      
+
       // Get the first matching shipping rate
       if (rates.results && rates.results.length > 0) {
         const rate = rates.results[0];
@@ -579,12 +579,12 @@ exports.getUserCountry = async (req, res) => {
       console.error('Error fetching shipping rate:', rateError);
       // Don't fail the request if shipping rate fetch fails, just log it
     }
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'User country retrieved successfully', 
+
+    return res.status(200).json({
+      success: true,
+      message: 'User country retrieved successfully',
       country,
-      shippingRate 
+      shippingRate
     });
   } catch (error) {
     console.error('Error getting user country:', error);

@@ -22,8 +22,7 @@ router.post(
 );
 
 router.post('/calculate-load', checkoutController.calculateLoad)
-router.post('/add-custom-price-to-cart/:cartId', checkoutController.testCustomPrice)
-router.post('/add-custom-price-to-order/:orderId', checkoutController.addCustomPriceToOrder)
+router.post('/add-custom-price-to-cart/:cartId/:userId', checkoutController.testCustomPrice)
 router.post('/track-container', checkoutController.trackContainer)
 router.get('/track', checkoutController.trackContainerByNumber)
 

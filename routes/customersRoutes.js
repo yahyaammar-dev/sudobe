@@ -6,6 +6,57 @@ const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 const ActivityLogger = require('../services/activityLogger');
 
+/**
+ * Validate phone number format
+ * - Must be numeric only (no + sign, no spaces, no dashes)
+ * - Must be at least 10 digits (minimum for country code + phone)
+ * - Maximum 15 digits (international standard)
+ * @param {string} phone - Phone number to validate
+ * @returns {object} - { valid: boolean, error: string }
+ */
+function validatePhoneNumber(phone) {
+  if (!phone || phone.trim() === '') {
+    return { valid: true, error: null }; // Phone is optional
+  }
+
+  // Remove any whitespace
+  const cleanedPhone = phone.trim();
+
+  // Check if contains + sign
+  if (cleanedPhone.includes('+')) {
+    return {
+      valid: false,
+      error: 'Phone number cannot contain "+" sign. Enter phone number with country code (no + sign). Example: 201234567890 (Egypt: 20 + phone number)'
+    };
+  }
+
+  // Check if contains only digits
+  if (!/^\d+$/.test(cleanedPhone)) {
+    return {
+      valid: false,
+      error: 'Phone number must contain only digits (no spaces, dashes, or special characters). Example: 201234567890'
+    };
+  }
+
+  // Check minimum length (at least 10 digits for country code + phone)
+  if (cleanedPhone.length < 10) {
+    return {
+      valid: false,
+      error: 'Phone number must be at least 10 digits long (including country code). Example: 201234567890 (Egypt: 20 + phone number)'
+    };
+  }
+
+  // Check maximum length (international standard is 15 digits)
+  if (cleanedPhone.length > 15) {
+    return {
+      valid: false,
+      error: 'Phone number cannot exceed 15 digits'
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
 // Serve the customers HTML page
 function serveCustomersPage(req, res) {
   res.sendFile(path.join(__dirname, '..', 'public', 'customers.html'));
@@ -96,11 +147,24 @@ router.post('/api', async (req, res) => {
       });
     }
 
+    // Validate phone number if provided
+    if (phone) {
+      const phoneValidation = validatePhoneNumber(phone);
+      if (!phoneValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: phoneValidation.error
+        });
+      }
+      // Clean phone number (remove any whitespace)
+      var cleanedPhone = phone.trim();
+    }
+
     const customerData = {
       email: email,
       first_name: first_name || '',
       last_name: last_name || '',
-      phone: phone || '',
+      phone: cleanedPhone || '',
       password: password || ''
     };
 
@@ -151,7 +215,20 @@ router.put('/api/:id', async (req, res) => {
     if (email !== undefined) updateData.email = email;
     if (first_name !== undefined) updateData.first_name = first_name;
     if (last_name !== undefined) updateData.last_name = last_name;
-    if (phone !== undefined) updateData.phone = phone;
+    
+    // Validate phone number if provided
+    if (phone !== undefined) {
+      const phoneValidation = validatePhoneNumber(phone);
+      if (!phoneValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: phoneValidation.error
+        });
+      }
+      // Clean phone number (remove any whitespace)
+      updateData.phone = phone.trim();
+    }
+    
     if (password !== undefined && password !== '') updateData.password = password;
 
     // Handle content fields (verified and vetted)
