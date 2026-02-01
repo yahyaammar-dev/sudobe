@@ -25,8 +25,8 @@ router.get('/test', async (req, res) => {
   const twilio = require('twilio');
 
   const client = twilio(
-    'process.env.TWILIO_ACCOUNT_SID',
-    'process.env.TWILIO_AUTH_TOKEN'
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
   );
 
   let otp = 1234;
@@ -36,7 +36,7 @@ router.get('/test', async (req, res) => {
     contentSid: 'HX9a310952405007ecb86ef08f61273cbc',
     contentVariables: JSON.stringify({ "1": otp.toString() }),
   });
-  
+
   return waMessage
 
 
@@ -136,8 +136,8 @@ router.post('/login', async (req, res) => {
     //   });
 
 
-      // Redirect to OTP verification page with user ID
-      // return res.redirect(`/otp-verify.html?userId=${user.id}&channel=${["failed", "undelivered"].includes(statusCheck.status) ? "sms" : "whatsapp"}`);
+    // Redirect to OTP verification page with user ID
+    // return res.redirect(`/otp-verify.html?userId=${user.id}&channel=${["failed", "undelivered"].includes(statusCheck.status) ? "sms" : "whatsapp"}`);
 
     // } catch (otpError) {
     //   console.error('OTP send error:', otpError);
@@ -353,9 +353,9 @@ router.get('/me', verifyToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch user info' 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user info'
     });
   }
 });
@@ -375,7 +375,7 @@ router.post('/register-user', async (req, res) => {
 
     // Check if user already exists by phone or email
     const existingUser = await swell.get('/accounts', {
-      where: { 
+      where: {
         $or: [
           { phone },
           { email }
@@ -491,8 +491,8 @@ router.post('/register-user', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
       error: error.message,
       details: error.response?.data || error
@@ -505,7 +505,7 @@ router.post('/register-user', async (req, res) => {
 router.get('/check-verification/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Validate ID
     if (!id) {
       return res.status(400).json({
@@ -546,9 +546,9 @@ router.get('/check-verification/:id', async (req, res) => {
     console.error('Check verification error:', error);
     console.error('Error message:', error.message);
     console.error('Error response:', error.response?.data);
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
       error: error.message,
       details: error.response?.data || error
@@ -561,7 +561,7 @@ router.post('/add-quote/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { productId } = req.body;
-    
+
     // Validate required fields
     if (!userId) {
       return res.status(400).json({
@@ -637,9 +637,9 @@ router.post('/add-quote/:userId', async (req, res) => {
     console.error('Add quote error:', error);
     console.error('Error message:', error.message);
     console.error('Error response:', error.response?.data);
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
       error: error.message,
       details: error.response?.data || error
@@ -651,7 +651,7 @@ router.post('/add-quote/:userId', async (req, res) => {
 router.get('/get-quotes/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // Validate ID
     if (!userId) {
       return res.status(400).json({
@@ -695,9 +695,9 @@ router.get('/get-quotes/:userId', async (req, res) => {
     console.error('Get quotes error:', error);
     console.error('Error message:', error.message);
     console.error('Error response:', error.response?.data);
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
       error: error.message,
       details: error.response?.data || error
@@ -709,7 +709,7 @@ router.get('/get-quotes/:userId', async (req, res) => {
 router.delete('/remove-quote/:userId/:productId', async (req, res) => {
   try {
     const { userId, productId } = req.params;
-    
+
     // Validate required fields
     if (!userId || !productId) {
       return res.status(400).json({
@@ -778,9 +778,9 @@ router.delete('/remove-quote/:userId/:productId', async (req, res) => {
     console.error('Remove quote error:', error);
     console.error('Error message:', error.message);
     console.error('Error response:', error.response?.data);
-    
-    res.status(500).json({ 
-      success: false, 
+
+    res.status(500).json({
+      success: false,
       message: 'Internal server error',
       error: error.message,
       details: error.response?.data || error
@@ -796,9 +796,9 @@ router.post('/upload-personal-id/:accountId', upload.single('personal_id'), asyn
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Personal ID document is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Personal ID document is required'
       });
     }
 
@@ -819,7 +819,7 @@ router.post('/upload-personal-id/:accountId', upload.single('personal_id'), asyn
     // Get existing content and update it directly (like updateOrderDocuments does)
     const previousContent = account.content || {};
     const updatedContent = { ...previousContent };
-    
+
     // Add personal_id to the content directly
     updatedContent.personal_id = {
       id: uploadedFile.id,
@@ -836,8 +836,8 @@ router.post('/upload-personal-id/:accountId', upload.single('personal_id'), asyn
       content: updatedContent
     });
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: 'Personal ID document uploaded successfully',
       user: account,
       document: {
@@ -860,9 +860,9 @@ router.post('/upload-certifications/:accountId', upload.array('certifications', 
     const files = req.files;
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'At least one certification document is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'At least one certification document is required'
       });
     }
 
@@ -921,8 +921,8 @@ router.post('/upload-certifications/:accountId', upload.array('certifications', 
       }
     });
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: 'Certification documents uploaded successfully',
       uploaded: uploadedCertifications,
       errors: errors.length > 0 ? errors : undefined
