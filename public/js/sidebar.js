@@ -13,13 +13,13 @@ const sidebarMenuItems = [
   { href: '/sudobe/api/content?section=images-list', icon: 'bi-image', label: 'Images', id: 'images', permission: 'view_images' },
   { href: '/sudobe/api/content?section=products', icon: 'bi-cart', label: 'Products Import Export', id: 'products-import', permission: ['import_products', 'export_products'] },
   { href: '/sudobe/api/content?section=products-list', icon: 'bi-cart', label: 'Products', id: 'products-list', permission: 'view_products' },
-  { href: '/qa', icon: 'bi-clipboard-check', label: 'QC Reports', id: 'qa', permission: 'view_qa_reports' },
-  { href: '/shipping-rates', icon: 'bi-truck', label: 'Shipping Rates', id: 'shipping-rates', permission: 'view_shipping_rates' },
-  { href: '/customers', icon: 'bi-people', label: 'Customers', id: 'customers', permission: 'view_customers' },
-  { href: '/factories', icon: 'bi-building', label: 'Factories', id: 'factories', permission: 'view_factories' },
-  { href: '/orders', icon: 'bi-receipt', label: 'Orders', id: 'orders', permission: 'view_orders' },
-  { href: '/logs', icon: 'bi-clock-history', label: 'Activity Logs', id: 'logs', permission: 'view_logs' },
-  { href: '/permissions', icon: 'bi-shield-lock', label: 'Permissions & Roles', id: 'permissions', permission: 'manage_roles' }
+  { href: '/sudobe/qa', icon: 'bi-clipboard-check', label: 'QC Reports', id: 'qa', permission: 'view_qa_reports' },
+  { href: '/sudobe/shipping-rates', icon: 'bi-truck', label: 'Shipping Rates', id: 'shipping-rates', permission: 'view_shipping_rates' },
+  { href: '/sudobe/customers', icon: 'bi-people', label: 'Customers', id: 'customers', permission: 'view_customers' },
+  { href: '/sudobe/factories', icon: 'bi-building', label: 'Factories', id: 'factories', permission: 'view_factories' },
+  { href: '/sudobe/orders', icon: 'bi-receipt', label: 'Orders', id: 'orders', permission: 'view_orders' },
+  { href: '/sudobe/logs', icon: 'bi-clock-history', label: 'Activity Logs', id: 'logs', permission: 'view_logs' },
+  { href: '/sudobe/permissions', icon: 'bi-shield-lock', label: 'Permissions & Roles', id: 'permissions', permission: 'manage_roles' }
 ];
 
 // Store user role and permissions
@@ -31,7 +31,7 @@ let userPermissions = [];
  */
 function getCurrentPageId() {
   const path = window.location.pathname;
-  
+
   // Map paths to page IDs
   if (path.includes('/customers')) return 'customers';
   if (path.includes('/factories')) return 'factories';
@@ -49,7 +49,7 @@ function getCurrentPageId() {
     if (section === 'products') return 'products-import';
     if (section === 'products-list') return 'products-list';
   }
-  
+
   return null;
 }
 
@@ -60,23 +60,23 @@ function getCurrentPageId() {
  */
 function hasPermissionForMenuItem(permission) {
   if (!permission) return true; // If no permission required, show item
-  
+
   // Handle array of permissions (OR logic - user needs at least one)
   if (Array.isArray(permission)) {
     return permission.some(perm => hasPermissionForMenuItem(perm));
   }
-  
+
   // If we have the hasPermission function from permissions.js, use it
   if (typeof window !== 'undefined' && typeof window.hasPermission === 'function') {
     return window.hasPermission(permission, currentUserRole);
   }
-  
+
   // Fallback: check permissions directly
   if (!currentUserRole) return false;
-  
+
   // Super admin has all permissions
   if (currentUserRole === 'super_admin') return true;
-  
+
   // Check if permission is in user's permissions list
   return userPermissions.includes(permission);
 }
@@ -102,14 +102,14 @@ async function loadUserPermissions() {
       const result = await response.json();
       if (result.success && result.user) {
         currentUserRole = result.user.role;
-        
+
         // Store in localStorage for permissions.js
         if (typeof window !== 'undefined' && typeof window.setUserRole === 'function') {
           window.setUserRole(currentUserRole);
         } else if (typeof localStorage !== 'undefined') {
           localStorage.setItem('userRole', currentUserRole);
         }
-        
+
         // Get permissions for the role
         if (typeof window !== 'undefined' && typeof window.ROLE_PERMISSIONS !== 'undefined') {
           userPermissions = window.ROLE_PERMISSIONS[currentUserRole] || [];
@@ -162,31 +162,31 @@ async function renderSidebar(containerId = 'sidebar-container') {
   await loadUserPermissions();
 
   const currentPageId = getCurrentPageId();
-  
+
   // Filter menu items based on permissions
   const filteredItems = getFilteredMenuItems();
-  
+
   // Add Bootstrap column classes to the container itself
   container.className = 'col-md-3 col-lg-2 sidebar p-0';
-  
+
   const sidebarContent = `
     <div class="p-3">
       <h4 class="mb-3">SODU CMS</h4>
       <div class="list-group">
         ${filteredItems.map(item => {
-          const isActive = item.id === currentPageId;
-          return `
+    const isActive = item.id === currentPageId;
+    return `
             <div class="list-group-item ${isActive ? 'active' : ''}" ${item.id === 'orders' ? 'id="orders-menu-item"' : ''}>
               <a href="${item.href}">
                 <i class="bi ${item.icon}"></i> ${item.label}
               </a>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
-  
+
   container.innerHTML = sidebarContent;
 }
 
