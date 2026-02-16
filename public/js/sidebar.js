@@ -8,11 +8,11 @@
 
 // Sidebar menu items configuration with required permissions
 const sidebarMenuItems = [
-  { href: '/api/content?section=banners-list', icon: 'bi-inbox', label: 'Banners', id: 'banners', permission: 'view_banners' },
-  { href: '/api/content?section=protections-list', icon: 'bi-shield-check', label: 'Protections', id: 'protections', permission: 'view_protections' },
-  { href: '/api/content?section=images-list', icon: 'bi-image', label: 'Images', id: 'images', permission: 'view_images' },
-  { href: '/api/content?section=products', icon: 'bi-cart', label: 'Products Import Export', id: 'products-import', permission: ['import_products', 'export_products'] },
-  { href: '/api/content?section=products-list', icon: 'bi-cart', label: 'Products', id: 'products-list', permission: 'view_products' },
+  { href: '/sudobe/api/content?section=banners-list', icon: 'bi-inbox', label: 'Banners', id: 'banners', permission: 'view_banners' },
+  { href: '/sudobe/api/content?section=protections-list', icon: 'bi-shield-check', label: 'Protections', id: 'protections', permission: 'view_protections' },
+  { href: '/sudobe/api/content?section=images-list', icon: 'bi-image', label: 'Images', id: 'images', permission: 'view_images' },
+  { href: '/sudobe/api/content?section=products', icon: 'bi-cart', label: 'Products Import Export', id: 'products-import', permission: ['import_products', 'export_products'] },
+  { href: '/sudobe/api/content?section=products-list', icon: 'bi-cart', label: 'Products', id: 'products-list', permission: 'view_products' },
   { href: '/qa', icon: 'bi-clipboard-check', label: 'QC Reports', id: 'qa', permission: 'view_qa_reports' },
   { href: '/shipping-rates', icon: 'bi-truck', label: 'Shipping Rates', id: 'shipping-rates', permission: 'view_shipping_rates' },
   { href: '/customers', icon: 'bi-people', label: 'Customers', id: 'customers', permission: 'view_customers' },
@@ -40,7 +40,7 @@ function getCurrentPageId() {
   if (path.includes('/permissions')) return 'permissions';
   if (path.includes('/shipping-rates')) return 'shipping-rates';
   if (path.includes('/qa')) return 'qa';
-  if (path.includes('/api/content')) {
+  if (path.includes('/sudobe/api/content')) {
     const params = new URLSearchParams(window.location.search);
     const section = params.get('section');
     if (section === 'banners-list') return 'banners';
@@ -97,7 +97,7 @@ function getFilteredMenuItems() {
  */
 async function loadUserPermissions() {
   try {
-    const response = await fetch('/api/auth/me');
+    const response = await fetch('/sudobe/api/auth/me');
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.user) {

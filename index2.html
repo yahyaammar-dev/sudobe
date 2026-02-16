@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Upload Order Documents</title>
 </head>
+
 <body>
   <h2>Upload Order Documents</h2>
   <form id="uploadForm" enctype="multipart/form-data">
@@ -43,7 +45,7 @@
       const formData = new FormData(form);
 
       try {
-        const res = await fetch('http://localhost:5000/api/checkout/update-order-documents/682eb21254a8350012558838', {
+        const res = await fetch('https://testdeployfornetservex.online/sudobe/sudobe/api/checkout/update-order-documents/682eb21254a8350012558838', {
           method: 'POST',
           body: formData,
         });
@@ -57,4 +59,5 @@
     });
   </script>
 </body>
+
 </html>

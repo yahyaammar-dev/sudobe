@@ -64,7 +64,7 @@
       </small>
     </div>
 
-    <form method="POST" action="/api/auth/verify-otp" id="otpForm">
+    <form method="POST" action="/sudobe/api/auth/verify-otp" id="otpForm">
       <input type="hidden" name="userId" id="userId" />
       
       <div class="mb-3">
@@ -209,7 +209,7 @@
       this.innerHTML = 'Sending...';
       
       try {
-        const response = await fetch('/api/auth/resend-otp', {
+        const response = await fetch('/sudobe/api/auth/resend-otp', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

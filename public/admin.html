@@ -129,7 +129,7 @@
       // Fetch user role and set permissions-based menu visibility
       (async () => {
         try {
-          const response = await fetch('/api/auth/me');
+          const response = await fetch('/sudobe/api/auth/me');
           if (response.ok) {
             const result = await response.json();
           if (result.success && result.user) {
@@ -263,7 +263,7 @@
 
       // === Banner Functions ===
       function loadBannerList() {
-        fetch('/api/content/banners')
+        fetch('/sudobe/api/content/banners')
           .then(res => res.json())
           .then(banners => {
             let html = `
@@ -274,7 +274,7 @@
                       <a href="?section=banner-form" class="btn btn-primary">
                         <i class="bi bi-plus-circle me-1"></i>Add New Banner
                       </a>
-                        <a href="/api/auth/logout" class="btn btn-primary">
+                        <a href="/sudobe/api/auth/logout" class="btn btn-primary">
                         <i class="bi bi-arrow-right me-1"></i>Logout
                       </a>
                     </div>
@@ -432,12 +432,12 @@
           try {
             let response;
             if (isEdit) {
-              response = await fetch(`/api/content/banners/${editData.id}`, {
+              response = await fetch(`/sudobe/api/content/banners/${editData.id}`, {
                 method: 'PUT',
                 body: formData
               });
             } else {
-              response = await fetch('/api/content', {
+              response = await fetch('/sudobe/api/content', {
                 method: 'POST',
                 body: formData
               });
@@ -469,7 +469,7 @@
               </div>
             `;
 
-        fetch(`/api/content/banners`)
+        fetch(`/sudobe/api/content/banners`)
           .then(res => res.json())
           .then(banners => {
             const banner = banners.find(b => b.id === bannerId);
@@ -504,7 +504,7 @@
           try {
             let html = '';
             if (type === 'category') {
-              const res = await fetch('/api/content/categories');
+              const res = await fetch('/sudobe/api/content/categories');
               const categories = await res.json();
               html += `<label class="form-label">Select Category <span class="text-danger">*</span></label>
                            <select name="bannerValue" class="form-select" required>`;
@@ -515,7 +515,7 @@
               });
               html += `</select>`;
             } else if (type === 'factory') {
-              const res = await fetch('/api/content/factories');
+              const res = await fetch('/sudobe/api/content/factories');
               const factories = await res.json();
               html += `<label class="form-label">Select Factory <span class="text-danger">*</span></label>
                            <select name="bannerValue" class="form-select" required>`;
@@ -569,7 +569,7 @@
         if (editData?.content?.data_id) {
           hiddenInput.value = editData.content.data_id;
           // Fetch product name for display
-          fetch(`/api/content/products?search=`)
+          fetch(`/sudobe/api/content/products?search=`)
             .then(res => res.json())
             .then(data => {
               const products = data.results || data || [];
@@ -589,7 +589,7 @@
           }
 
           try {
-            const res = await fetch(`/api/content/products?search=${encodeURIComponent(term)}`);
+            const res = await fetch(`/sudobe/api/content/products?search=${encodeURIComponent(term)}`);
             const data = await res.json();
             const products = data.results || data || [];
 
@@ -634,7 +634,7 @@
 
       // === Protection Functions ===
       function loadProtectionList() {
-        fetch('/api/content/protections')
+        fetch('/sudobe/api/content/protections')
           .then(res => res.json())
           .then(protections => {
             let html = `
@@ -720,7 +720,7 @@
       function loadImagesList(page = 1) {
         const limit = 20; // Images per page
         
-        fetch(`/api/content/images?page=${page}&limit=${limit}`)
+        fetch(`/sudobe/api/content/images?page=${page}&limit=${limit}`)
           .then(res => res.json())
           .then(data => {
             const { images, pagination } = data;
@@ -732,7 +732,7 @@
                       <a href="?section=image-upload" class="btn btn-primary">
                         <i class="bi bi-plus-circle me-1"></i>Upload Images
                       </a>
-                      <a href="/api/auth/logout" class="btn btn-outline-primary">
+                      <a href="/sudobe/api/auth/logout" class="btn btn-outline-primary">
                         <i class="bi bi-arrow-right me-1"></i>Logout
                       </a>
                     </div>
@@ -1057,7 +1057,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
           submitBtn.disabled = true;
 
           try {
-            const response = await fetch('/api/content/images', {
+            const response = await fetch('/sudobe/api/content/images', {
               method: 'POST',
               body: formData
             });
@@ -1146,12 +1146,12 @@ function generateProductsPaginationControls(pagination, currentPage) {
           try {
             let response;
             if (isEdit) {
-              response = await fetch(`/api/content/protections/${editData.id}`, {
+              response = await fetch(`/sudobe/api/content/protections/${editData.id}`, {
                 method: 'PUT',
                 body: formData
               });
             } else {
-              response = await fetch('/api/content/protection', {
+              response = await fetch('/sudobe/api/content/protection', {
                 method: 'POST',
                 body: formData
               });
@@ -1176,7 +1176,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
         formContainer.innerHTML = `
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="bi bi-cart me-2"></i>Products</h2>
-                <a href="/api/auth/logout" class="btn btn-outline-primary">
+                <a href="/sudobe/api/auth/logout" class="btn btn-outline-primary">
                   <i class="bi bi-arrow-right me-1"></i>Logout
                 </a>
               </div>
@@ -1218,7 +1218,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
           submitBtn.disabled = true;
 
           try {
-            const response = await fetch('/api/content/products', {
+            const response = await fetch('/sudobe/api/content/products', {
               method: 'POST',
               body: formData
             });
@@ -1324,7 +1324,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
           exportBtn.disabled = true;
 
           try {
-            const response = await fetch('/api/content/products/export', {
+            const response = await fetch('/sudobe/api/content/products/export', {
               method: 'GET'
             });
 
@@ -1453,7 +1453,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
           };
           
           try {
-            const response = await fetch('/api/content/products/factories');
+            const response = await fetch('/sudobe/api/content/products/factories');
             const result = await response.json();
             
             if (response.ok && result.success && result.factories) {
@@ -1508,7 +1508,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
                 try {
                   // Send factory IDs as comma-separated string
                   const factoryIdsParam = checkedFactories.join(',');
-                  const exportResponse = await fetch(`/api/content/products/export-pdf?factoryIds=${encodeURIComponent(factoryIdsParam)}`);
+                  const exportResponse = await fetch(`/sudobe/api/content/products/export-pdf?factoryIds=${encodeURIComponent(factoryIdsParam)}`);
                   
                   if (exportResponse.ok) {
                     // Get filename from Content-Disposition header
@@ -1588,7 +1588,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
               <a href="?section=products" class="btn btn-outline-secondary">
                 <i class="bi bi-upload me-1"></i>Import/Export
               </a>
-              <a href="/api/auth/logout" class="btn btn-outline-primary">
+              <a href="/sudobe/api/auth/logout" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-right me-1"></i>Logout
               </a>
             </div>
@@ -1608,7 +1608,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
         const searchFilter = new URLSearchParams(window.location.search).get('search') || '';
         
         // Build API URL with filters if present
-        let productsUrl = `/api/content/products?page=${page}&limit=${limit}`;
+        let productsUrl = `/sudobe/api/content/products?page=${page}&limit=${limit}`;
         if (factoryFilter) {
           productsUrl += `&factory=${encodeURIComponent(factoryFilter)}`;
         }
@@ -1619,8 +1619,8 @@ function generateProductsPaginationControls(pagination, currentPage) {
         // Fetch products, categories, and factories
         Promise.all([
           fetch(productsUrl).then(res => res.json()),
-          fetch('/api/content/categories').then(res => res.json()),
-          fetch('/api/content/factories').then(res => res.json())
+          fetch('/sudobe/api/content/categories').then(res => res.json()),
+          fetch('/sudobe/api/content/factories').then(res => res.json())
         ])
           .then(([productsData, categoriesData, factoriesData]) => {
             const products = productsData.results || [];
@@ -1669,7 +1669,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
                   <a href="?section=products" class="btn btn-outline-secondary">
                     <i class="bi bi-upload me-1"></i>Import/Export
                   </a>
-                  <a href="/api/auth/logout" class="btn btn-outline-primary">
+                  <a href="/sudobe/api/auth/logout" class="btn btn-outline-primary">
                     <i class="bi bi-arrow-right me-1"></i>Logout
                   </a>
                 </div>
@@ -1877,7 +1877,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
             formContainer.innerHTML = `
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="bi bi-cart me-2"></i>Products List</h2>
-                <a href="/api/auth/logout" class="btn btn-outline-primary">
+                <a href="/sudobe/api/auth/logout" class="btn btn-outline-primary">
                   <i class="bi bi-arrow-right me-1"></i>Logout
                 </a>
               </div>
@@ -1897,7 +1897,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
               </div>
             `;
 
-        fetch(`/api/content/protections`)
+        fetch(`/sudobe/api/content/protections`)
           .then(res => res.json())
           .then(protections => {
             const protection = protections.find(p => p.id === protectionId);
@@ -1934,7 +1934,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
                   <h5 class="card-title mb-0">Update Banking Information</h5>
                 </div>
                 <div class="card-body">
-                  <form action="/api/content/banking" method="POST">
+                  <form action="/sudobe/api/content/banking" method="POST">
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Account Number <span class="text-danger">*</span></label>
@@ -1983,7 +1983,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
 
-        fetch(`/api/content/banners/${id}`, { method: 'DELETE' })
+        fetch(`/sudobe/api/content/banners/${id}`, { method: 'DELETE' })
           .then(response => {
             if (response.ok) {
               loadBannerList();
@@ -2020,7 +2020,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
 
-        fetch(`/api/content/protections/${id}`, { method: 'DELETE' })
+        fetch(`/sudobe/api/content/protections/${id}`, { method: 'DELETE' })
           .then(response => {
             if (response.ok) {
               loadProtectionList();
@@ -2079,7 +2079,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
 
-        fetch(`/api/content/images/${id}`, { method: 'DELETE' })
+        fetch(`/sudobe/api/content/images/${id}`, { method: 'DELETE' })
           .then(response => {
             if (response.ok) {
               loadImagesList();

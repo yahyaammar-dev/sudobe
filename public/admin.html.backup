@@ -206,7 +206,7 @@
 
       // === Banner Functions ===
       function loadBannerList() {
-        fetch('/api/content/banners')
+        fetch('/sudobe/api/content/banners')
           .then(res => res.json())
           .then(banners => {
             let html = `
@@ -217,7 +217,7 @@
                       <a href="?section=banner-form" class="btn btn-primary">
                         <i class="bi bi-plus-circle me-1"></i>Add New Banner
                       </a>
-                        <a href="/api/auth/logout" class="btn btn-primary">
+                        <a href="/sudobe/api/auth/logout" class="btn btn-primary">
                         <i class="bi bi-arrow-right me-1"></i>Logout
                       </a>
                     </div>
@@ -375,12 +375,12 @@
           try {
             let response;
             if (isEdit) {
-              response = await fetch(`/api/content/banners/${editData.id}`, {
+              response = await fetch(`/sudobe/api/content/banners/${editData.id}`, {
                 method: 'PUT',
                 body: formData
               });
             } else {
-              response = await fetch('/api/content', {
+              response = await fetch('/sudobe/api/content', {
                 method: 'POST',
                 body: formData
               });
@@ -412,7 +412,7 @@
               </div>
             `;
 
-        fetch(`/api/content/banners`)
+        fetch(`/sudobe/api/content/banners`)
           .then(res => res.json())
           .then(banners => {
             const banner = banners.find(b => b.id === bannerId);
@@ -447,7 +447,7 @@
           try {
             let html = '';
             if (type === 'category') {
-              const res = await fetch('/api/content/categories');
+              const res = await fetch('/sudobe/api/content/categories');
               const categories = await res.json();
               html += `<label class="form-label">Select Category <span class="text-danger">*</span></label>
                            <select name="bannerValue" class="form-select" required>`;
@@ -458,7 +458,7 @@
               });
               html += `</select>`;
             } else if (type === 'factory') {
-              const res = await fetch('/api/content/factories');
+              const res = await fetch('/sudobe/api/content/factories');
               const factories = await res.json();
               html += `<label class="form-label">Select Factory <span class="text-danger">*</span></label>
                            <select name="bannerValue" class="form-select" required>`;
@@ -512,7 +512,7 @@
         if (editData?.content?.data_id) {
           hiddenInput.value = editData.content.data_id;
           // Fetch product name for display
-          fetch(`/api/content/products?search=`)
+          fetch(`/sudobe/api/content/products?search=`)
             .then(res => res.json())
             .then(products => {
               const product = products.find(p => p.id === editData.content.data_id);
@@ -531,7 +531,7 @@
           }
 
           try {
-            const res = await fetch(`/api/content/products?search=${encodeURIComponent(term)}`);
+            const res = await fetch(`/sudobe/api/content/products?search=${encodeURIComponent(term)}`);
             const products = await res.json();
 
             autocomplete.innerHTML = '';
@@ -575,7 +575,7 @@
 
       // === Protection Functions ===
       function loadProtectionList() {
-        fetch('/api/content/protections')
+        fetch('/sudobe/api/content/protections')
           .then(res => res.json())
           .then(protections => {
             let html = `
@@ -725,12 +725,12 @@
           try {
             let response;
             if (isEdit) {
-              response = await fetch(`/api/content/protections/${editData.id}`, {
+              response = await fetch(`/sudobe/api/content/protections/${editData.id}`, {
                 method: 'PUT',
                 body: formData
               });
             } else {
-              response = await fetch('/api/content/protection', {
+              response = await fetch('/sudobe/api/content/protection', {
                 method: 'POST',
                 body: formData
               });
@@ -759,7 +759,7 @@
               </div>
             `;
 
-        fetch(`/api/content/protections`)
+        fetch(`/sudobe/api/content/protections`)
           .then(res => res.json())
           .then(protections => {
             const protection = protections.find(p => p.id === protectionId);
@@ -796,7 +796,7 @@
                   <h5 class="card-title mb-0">Update Banking Information</h5>
                 </div>
                 <div class="card-body">
-                  <form action="/api/content/banking" method="POST">
+                  <form action="/sudobe/api/content/banking" method="POST">
                     <div class="row">
                       <div class="col-md-6 mb-3">
                         <label class="form-label">Account Number <span class="text-danger">*</span></label>
@@ -845,7 +845,7 @@
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
 
-        fetch(`/api/content/banners/${id}`, { method: 'DELETE' })
+        fetch(`/sudobe/api/content/banners/${id}`, { method: 'DELETE' })
           .then(response => {
             if (response.ok) {
               loadBannerList();
@@ -882,7 +882,7 @@
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
         btn.disabled = true;
 
-        fetch(`/api/content/protections/${id}`, { method: 'DELETE' })
+        fetch(`/sudobe/api/content/protections/${id}`, { method: 'DELETE' })
           .then(response => {
             if (response.ok) {
               loadProtectionList();
