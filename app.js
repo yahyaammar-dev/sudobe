@@ -85,7 +85,7 @@ app.use('/permissions', verifyToken, require('./routes/permissionsRoutes').route
 
 // Default route
 app.get('/', (req, res) => {
-  return res.redirect('/api/content/');
+  return res.redirect('/sudobe/api/content/');
 });
 
 module.exports = app;

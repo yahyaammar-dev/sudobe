@@ -55,13 +55,13 @@ router.post('/login', async (req, res) => {
     const user = users.results.find(u => u.content?.email?.toLowerCase() === email.toLowerCase());
 
     if (!user) {
-      return res.redirect('/auth.html?status=error&message=Invalid credentials');
+      return res.redirect('/sudobe/auth.html?status=error&message=Invalid credentials');
     }
 
     const match = await bcrypt.compare(password, user.content.password);
 
     if (!match) {
-      return res.redirect('/auth.html?status=error&message=Invalid credentials');
+      return res.redirect('/sudobe/auth.html?status=error&message=Invalid credentials');
     }
 
     await swell.put(`/content/cms-users/${user.id}`, {
@@ -91,11 +91,11 @@ router.post('/login', async (req, res) => {
       secure: process.env.NODE_ENV === 'production'
     });
 
-    res.redirect('/api/content');
+    res.redirect('/sudobe/api/content');
 
     // Check if user has phone number for 2FA
     // if (!user.content.phone) {
-    //   return res.redirect('/auth.html?status=error&message=Phone number not configured for 2FA');
+    //   return res.redirect('/sudobe/auth.html?status=error&message=Phone number not configured for 2FA');
     // }
 
     // // Generate and send OTP
@@ -137,16 +137,16 @@ router.post('/login', async (req, res) => {
 
 
     // Redirect to OTP verification page with user ID
-    // return res.redirect(`/otp-verify.html?userId=${user.id}&channel=${["failed", "undelivered"].includes(statusCheck.status) ? "sms" : "whatsapp"}`);
+    // return res.redirect(`/sudobe/otp-verify.html?userId=${user.id}&channel=${["failed", "undelivered"].includes(statusCheck.status) ? "sms" : "whatsapp"}`);
 
     // } catch (otpError) {
     //   console.error('OTP send error:', otpError);
-    //   return res.redirect('/auth.html?status=error&message=Failed to send OTP');
+    //   return res.redirect('/sudobe/auth.html?status=error&message=Failed to send OTP');
     // }
 
   } catch (error) {
     console.error('Login error:', error);
-    res.redirect('/auth.html?status=error&message=Internal server error');
+    res.redirect('/sudobe/auth.html?status=error&message=Internal server error');
   }
 });
 
@@ -156,19 +156,19 @@ router.post('/verify-otp', async (req, res) => {
     const { userId, otp } = req.body;
 
     if (!userId || !otp) {
-      return res.redirect('/otp-verify.html?status=error&message=Missing required fields');
+      return res.redirect('/sudobe/otp-verify.html?status=error&message=Missing required fields');
     }
 
     // Get user
     const user = await swell.get(`/content/cms-users/${userId}`);
 
     if (!user) {
-      return res.redirect('/auth.html?status=error&message=User not found');
+      return res.redirect('/sudobe/auth.html?status=error&message=User not found');
     }
 
     // Check if OTP exists and hasn't expired
     if (!user.content.otp || !user.content.otpExpiry) {
-      return res.redirect('/auth.html?status=error&message=No OTP found. Please login again');
+      return res.redirect('/sudobe/auth.html?status=error&message=No OTP found. Please login again');
     }
 
     const otpExpiry = new Date(user.content.otpExpiry);
@@ -184,12 +184,12 @@ router.post('/verify-otp', async (req, res) => {
           otpVerified: false
         }
       });
-      return res.redirect('/auth.html?status=error&message=OTP expired. Please login again');
+      return res.redirect('/sudobe/auth.html?status=error&message=OTP expired. Please login again');
     }
 
     // Verify OTP
     if (parseInt(otp) !== parseInt(user.content.otp)) {
-      return res.redirect(`/otp-verify.html?userId=${userId}&status=error&message=Invalid OTP`);
+      return res.redirect(`/sudobe/otp-verify.html?userId=${userId}&status=error&message=Invalid OTP`);
     }
 
     // Mark OTP as verified and clear it
@@ -220,11 +220,11 @@ router.post('/verify-otp', async (req, res) => {
       secure: process.env.NODE_ENV === 'production'
     });
 
-    res.redirect('/api/content');
+    res.redirect('/sudobe/api/content');
 
   } catch (error) {
     console.error('OTP verification error:', error);
-    res.redirect('/auth.html?status=error&message=Internal server error');
+    res.redirect('/sudobe/auth.html?status=error&message=Internal server error');
   }
 });
 
@@ -306,7 +306,7 @@ router.post('/register', async (req, res) => {
     });
 
     if (existing.results.length > 0) {
-      return res.redirect('/auth.html?status=error&message=Email already exists');
+      return res.redirect('/sudobe/auth.html?status=error&message=Email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -325,17 +325,17 @@ router.post('/register', async (req, res) => {
     console.log(createdUser);
 
     // Redirect to success page or next step
-    res.redirect('/auth.html?status=success&message=User registered successfully');
+    res.redirect('/sudobe/auth.html?status=success&message=User registered successfully');
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.redirect('/auth.html?status=error&message=Internal server error');
+    res.redirect('/sudobe/auth.html?status=error&message=Internal server error');
   }
 });
 
 router.get('/logout', (req, res) => {
   res.clearCookie('token');
-  res.redirect('/auth.html');
+  res.redirect('/sudobe/auth.html');
 });
 
 // Get current user info including role
