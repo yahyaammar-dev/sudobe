@@ -38,7 +38,7 @@ exports.getAllReports = async (req, res) => {
       limit: 1000,
       sort: 'date_created desc'
     });
-    
+
     // Extract basic info for list view
     const reports = (result.results || []).map(report => {
       let reportData = {};
@@ -47,7 +47,7 @@ exports.getAllReports = async (req, res) => {
       } catch (e) {
         reportData = {};
       }
-      
+
       return {
         id: report.id,
         po: reportData.po || 'N/A',
@@ -59,7 +59,7 @@ exports.getAllReports = async (req, res) => {
         dateUpdated: report.date_updated
       };
     });
-    
+
     res.json({
       success: true,
       reports
@@ -79,21 +79,21 @@ exports.getReport = async (req, res) => {
   try {
     const { id } = req.params;
     const report = await swell.get(`/content/qa/${id}`);
-    
+
     if (!report) {
       return res.status(404).json({
         success: false,
         message: 'Report not found'
       });
     }
-    
+
     let reportData = {};
     try {
       reportData = JSON.parse(report.content?.report || '{}');
     } catch (e) {
       reportData = {};
     }
-    
+
     res.json({
       success: true,
       report: {
@@ -117,14 +117,14 @@ exports.getReport = async (req, res) => {
 exports.createReport = async (req, res) => {
   try {
     const { reportData } = req.body;
-    
+
     if (!reportData) {
       return res.status(400).json({
         success: false,
         message: 'Report data is required'
       });
     }
-    
+
     // Store the JSON as a string in the report field
     const qaContent = {
       active: true,
@@ -132,9 +132,9 @@ exports.createReport = async (req, res) => {
         report: JSON.stringify(reportData)
       }
     };
-    
+
     const created = await swell.post('/content/qa', qaContent);
-    
+
     res.json({
       success: true,
       message: 'Report saved successfully',
@@ -158,23 +158,23 @@ exports.updateReport = async (req, res) => {
   try {
     const { id } = req.params;
     const { reportData } = req.body;
-    
+
     if (!reportData) {
       return res.status(400).json({
         success: false,
         message: 'Report data is required'
       });
     }
-    
+
     // Update the report field with new JSON data
     const updateData = {
       content: {
         report: JSON.stringify(reportData)
       }
     };
-    
+
     const updated = await swell.put(`/content/qa/${id}`, updateData);
-    
+
     res.json({
       success: true,
       message: 'Report updated successfully',
@@ -197,7 +197,7 @@ exports.updateReport = async (req, res) => {
 exports.uploadImage = async (req, res) => {
   try {
     const file = req.file;
-    
+
     if (!file) {
       return res.status(400).json({
         success: false,
@@ -232,7 +232,7 @@ exports.uploadImage = async (req, res) => {
     });
   } catch (error) {
     console.error('Error uploading image:', error);
-    
+
     // Handle multer errors
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
@@ -240,14 +240,14 @@ exports.uploadImage = async (req, res) => {
         message: 'File size exceeds 10MB limit'
       });
     }
-    
+
     if (error.message && error.message.includes('Only image files')) {
       return res.status(400).json({
         success: false,
         message: error.message
       });
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Failed to upload image',
@@ -272,6 +272,7 @@ async function generatePDFInternal(html, jobId) {
     // Launch browser with system Chrome/Chromium
     const launchOptions = {
       headless: true,
+      protocolTimeout: 300000,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -299,12 +300,12 @@ async function generatePDFInternal(html, jobId) {
         '--disable-features=VizDisplayCompositor'
       ]
     };
-    
+
     // Use system Chromium if available (production)
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       const fs = require('fs');
       let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-      
+
       if (!fs.existsSync(executablePath)) {
         const alternatives = [
           '/usr/bin/chromium',
@@ -323,37 +324,38 @@ async function generatePDFInternal(html, jobId) {
           }
         }
       }
-      
+
       launchOptions.executablePath = executablePath;
       launchOptions.args.push('--no-zygote', '--single-process');
     }
-    
+
     browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
-    page.setDefaultTimeout(120000);
-    
+    page.setDefaultTimeout(300000);
+    page.setDefaultNavigationTimeout(300000);
+
     await page.setViewport({
       width: 1200,
       height: 1600,
       deviceScaleFactor: 1
     });
-    
+
     await page.setContent(html, {
       waitUntil: 'domcontentloaded',
-      timeout: 60000
+      timeout: 300000
     });
-    
+
     console.log('[PDF] Waiting for images to load...');
     const imageStartTime = Date.now();
-    
+
     try {
       const imageCount = await page.evaluate(() => document.images.length);
       console.log(`[PDF] Found ${imageCount} images to load`);
-      
+
       if (imageCount > 0) {
-        const maxWaitTime = Math.min(120000, imageCount * 6000);
-        console.log(`[PDF] Waiting up to ${maxWaitTime/1000}s for images to load...`);
-        
+        const maxWaitTime = Math.min(300000, imageCount * 10000);
+        console.log(`[PDF] Waiting up to ${maxWaitTime / 1000}s for images to load...`);
+
         await Promise.race([
           page.evaluate(() => {
             return Promise.allSettled(
@@ -374,10 +376,10 @@ async function generatePDFInternal(html, jobId) {
                     cleanup();
                     resolve();
                   };
-                  
+
                   img.addEventListener('load', onLoad);
                   img.addEventListener('error', onError);
-                  
+
                   setTimeout(() => {
                     cleanup();
                     resolve();
@@ -388,104 +390,108 @@ async function generatePDFInternal(html, jobId) {
           }),
           new Promise((resolve) => setTimeout(resolve, maxWaitTime))
         ]);
-        
+
         let loadedCount = 0;
         let attempts = 0;
         const maxPollAttempts = 40;
-        
+
         while (attempts < maxPollAttempts) {
           loadedCount = await page.evaluate(() => {
             return Array.from(document.images).filter(
               img => img.complete && img.naturalHeight > 0
             ).length;
           });
-          
+
           if (loadedCount >= imageCount * 0.9) {
-            console.log(`[PDF] ${loadedCount}/${imageCount} images loaded (${Math.round(loadedCount/imageCount*100)}%)`);
+            console.log(`[PDF] ${loadedCount}/${imageCount} images loaded (${Math.round(loadedCount / imageCount * 100)}%)`);
             break;
           }
-          
+
           attempts++;
           await new Promise(resolve => setTimeout(resolve, 500));
         }
-        
+
         const elapsed = Date.now() - imageStartTime;
         console.log(`[PDF] Images loaded: ${loadedCount}/${imageCount} in ${elapsed}ms`);
       }
     } catch (e) {
       console.log(`[PDF] Image loading error (proceeding anyway):`, e.message);
     }
-    
+
     // Convert all images to base64 server-side for iOS compatibility
     // This ensures images are properly embedded in the PDF and work on iOS viewers
     console.log('[PDF] Converting images to base64 for iOS compatibility...');
     try {
       const conversionResult = await page.evaluate(() => {
+        // Capping dimensions helps prevent PDF rendering engine from timing out or crashing
+        const MAX_DIMENSION = 1600;
+
         return Promise.all(
           Array.from(document.images).map((img) => {
             // Skip if already base64
             if (img.src && img.src.startsWith('data:')) {
               return Promise.resolve({ success: true, skipped: true });
             }
-            
+
             return new Promise((resolve) => {
-              // If image is already loaded, convert immediately
-              if (img.complete && img.naturalHeight > 0 && img.naturalWidth > 0) {
+              const convertToDataURL = (image) => {
                 try {
                   const canvas = document.createElement('canvas');
                   const ctx = canvas.getContext('2d');
-                  canvas.width = img.naturalWidth;
-                  canvas.height = img.naturalHeight;
-                  ctx.drawImage(img, 0, 0);
-                  // Use JPEG format with 0.92 quality for better iOS compatibility
-                  const base64 = canvas.toDataURL('image/jpeg', 0.92);
-                  img.src = base64;
-                  resolve({ success: true, converted: true });
+
+                  let width = image.naturalWidth;
+                  let height = image.naturalHeight;
+
+                  // Scale down if image is too large (like iPhone 12MP photos)
+                  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                    if (width > height) {
+                      height = Math.round((height * MAX_DIMENSION) / width);
+                      width = MAX_DIMENSION;
+                    } else {
+                      width = Math.round((width * MAX_DIMENSION) / height);
+                      height = MAX_DIMENSION;
+                    }
+                  }
+
+                  canvas.width = width;
+                  canvas.height = height;
+                  ctx.drawImage(image, 0, 0, width, height);
+                  // Use JPEG format with 0.85 quality for good balance of size and quality
+                  const base64 = canvas.toDataURL('image/jpeg', 0.85);
+                  image.src = base64;
+                  return { success: true, converted: true };
                 } catch (e) {
-                  console.warn('Failed to convert loaded image to base64:', img.src, e);
-                  resolve({ success: false, error: e.message });
+                  return { success: false, error: e.message };
                 }
+              };
+
+              // If image is already loaded, convert immediately
+              if (img.complete && img.naturalHeight > 0 && img.naturalWidth > 0) {
+                resolve(convertToDataURL(img));
                 return;
               }
-              
-              // Image not loaded yet, wait for it
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              
+
               const timeout = setTimeout(() => {
-                console.warn('Image conversion timeout:', img.src);
                 resolve({ success: false, error: 'timeout' });
-              }, 10000);
-              
-              const onLoad = function() {
+              }, 20000); // 20s timeout per image load attempt
+
+              const onLoad = function () {
                 clearTimeout(timeout);
-                try {
-                  canvas.width = this.naturalWidth;
-                  canvas.height = this.naturalHeight;
-                  ctx.drawImage(this, 0, 0);
-                  // Use JPEG format with 0.92 quality for better iOS compatibility
-                  const base64 = canvas.toDataURL('image/jpeg', 0.92);
-                  this.src = base64;
-                  resolve({ success: true, converted: true });
-                } catch (e) {
-                  console.warn('Failed to convert image to base64:', this.src, e);
-                  resolve({ success: false, error: e.message });
-                }
+                resolve(convertToDataURL(this));
               };
-              
-              const onError = function() {
+
+              const onError = function () {
                 clearTimeout(timeout);
-                console.warn('Image load error during conversion:', this.src);
                 resolve({ success: false, error: 'load failed' });
               };
-              
+
               img.addEventListener('load', onLoad, { once: true });
               img.addEventListener('error', onError, { once: true });
             });
           })
         );
       });
-      
+
       const results = conversionResult || [];
       const converted = results.filter(r => r && r.converted).length;
       const skipped = results.filter(r => r && r.skipped).length;
@@ -494,10 +500,10 @@ async function generatePDFInternal(html, jobId) {
     } catch (e) {
       console.log(`[PDF] Image conversion error (proceeding anyway):`, e.message);
     }
-    
+
     console.log('[PDF] Waiting for final image rendering...');
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Generate PDF with optimized settings to reduce file size and memory usage
     // Note: For large PDFs with many images, you may need to increase Node.js heap size:
     // NODE_OPTIONS="--max-old-space-size=4096" (4GB) or higher
@@ -520,30 +526,30 @@ async function generatePDFInternal(html, jobId) {
     });
     const pdfSizeMB = pdf.length / 1024 / 1024;
     console.log(`[PDF] PDF generated in ${Date.now() - pdfStartTime}ms (size: ${pdfSizeMB.toFixed(2)} MB)`);
-    
+
     // Warn if PDF is very large (may cause memory issues)
     if (pdfSizeMB > 50) {
       console.warn(`[PDF] Warning: Large PDF (${pdfSizeMB.toFixed(2)} MB) may cause memory issues. Consider increasing Node.js heap size with NODE_OPTIONS="--max-old-space-size=4096"`);
     }
-    
+
     await browser.close();
-    
+
     // Store PDF in temp file for direct download (no Swell upload to save memory)
     // This avoids base64 encoding which doubles memory usage
     const filename = `qc-report-${jobId}.pdf`;
     const tempFilePath = path.join(os.tmpdir(), `pdf-${jobId}-${Date.now()}.pdf`);
-    
+
     try {
       // Write PDF buffer to temp file
       console.log(`[PDF] Writing PDF to temp file (${pdfSizeMB.toFixed(2)} MB)...`);
       fs.writeFileSync(tempFilePath, pdf);
-      
+
       // PDF buffer will be garbage collected after this scope
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       // Update job status to completed with temp file path
       pdfJobs.set(jobId, {
         ...pdfJobs.get(jobId),
@@ -552,7 +558,7 @@ async function generatePDFInternal(html, jobId) {
         filename: filename,
         completedAt: new Date().toISOString()
       });
-      
+
       console.log(`[PDF] Job ${jobId} completed, PDF ready for download at ${tempFilePath}`);
     } catch (error) {
       // If file write fails, clean up
@@ -570,7 +576,7 @@ async function generatePDFInternal(html, jobId) {
       await browser.close();
     }
     console.error(`[PDF] Error generating PDF for job ${jobId}:`, error);
-    
+
     // Update job status to failed
     if (pdfJobs.has(jobId)) {
       pdfJobs.set(jobId, {
@@ -587,17 +593,17 @@ async function generatePDFInternal(html, jobId) {
 exports.startPDFGeneration = async (req, res) => {
   try {
     const { html, reportId } = req.body;
-    
+
     if (!html) {
       return res.status(400).json({
         success: false,
         message: 'HTML content is required'
       });
     }
-    
+
     // Generate unique job ID
     const jobId = crypto.randomBytes(16).toString('hex');
-    
+
     // Create job entry
     pdfJobs.set(jobId, {
       id: jobId,
@@ -605,12 +611,12 @@ exports.startPDFGeneration = async (req, res) => {
       status: 'pending',
       createdAt: new Date().toISOString()
     });
-    
+
     // Start PDF generation in background (don't await)
     generatePDFInternal(html, jobId).catch(err => {
       console.error(`[PDF] Background job ${jobId} failed:`, err);
     });
-    
+
     res.json({
       success: true,
       jobId: jobId,
@@ -630,16 +636,16 @@ exports.startPDFGeneration = async (req, res) => {
 exports.checkPDFStatus = async (req, res) => {
   try {
     const { jobId } = req.params;
-    
+
     if (!pdfJobs.has(jobId)) {
       return res.status(404).json({
         success: false,
         message: 'Job not found'
       });
     }
-    
+
     const job = pdfJobs.get(jobId);
-    
+
     res.json({
       success: true,
       job: {
@@ -667,23 +673,23 @@ exports.checkPDFStatus = async (req, res) => {
 exports.downloadPDF = async (req, res) => {
   try {
     const { jobId } = req.params;
-    
+
     if (!pdfJobs.has(jobId)) {
       return res.status(404).json({
         success: false,
         message: 'Job not found'
       });
     }
-    
+
     const job = pdfJobs.get(jobId);
-    
+
     if (job.status !== 'completed' || !job.pdfPath) {
       return res.status(400).json({
         success: false,
         message: 'PDF is not ready yet'
       });
     }
-    
+
     // Check if file exists
     if (!fs.existsSync(job.pdfPath)) {
       return res.status(404).json({
@@ -691,18 +697,18 @@ exports.downloadPDF = async (req, res) => {
         message: 'PDF file not found (may have been cleaned up)'
       });
     }
-    
+
     // Read PDF file and stream it directly
     const filename = job.filename || `qc-report-${jobId}.pdf`;
-    
+
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
+
     // Stream the file directly (more memory efficient for large files)
     const fileStream = fs.createReadStream(job.pdfPath);
     fileStream.pipe(res);
-    
+
     // Clean up file after streaming (optional - you might want to keep it for a while)
     fileStream.on('end', () => {
       // Optionally delete the file after download
@@ -718,7 +724,7 @@ exports.downloadPDF = async (req, res) => {
       //   }
       // }, 1000);
     });
-    
+
   } catch (error) {
     console.error('Error downloading PDF:', error);
     res.status(500).json({
