@@ -97,7 +97,7 @@
       <button class="iconbtn" id="backBtn" aria-label="Back" style="display:none">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <img src="assets/Screenshot_2026-02-27_at_11.07.36_PM-removebg-preview.png" alt="SODU" class="topbar-logo">
+      <img src="assets/2F2D04C8-0980-4F09-9B56-7D5E536CBA15.PNG" alt="SODU" class="topbar-logo">
       <div class="titlewrap" id="titlewrap" style="visibility:hidden">
         <div class="pagetitle" id="pageTitle">Home</div>
         <div class="subtitle" id="pageSubtitle">Browse categories & factories</div>
@@ -107,14 +107,14 @@
   </div>
 
   <div class="wrap">
-    <div id="homeView">
-      <div class="search">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="opacity:.5">
-          <path d="M21 21l-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input id="homeSearch" placeholder="Search product or manufacturer" />
-      </div>
+    <div id="searchBar" class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="opacity:.5">
+        <path d="M21 21l-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input id="homeSearch" placeholder="Search products…" />
+    </div>
 
+    <div id="homeView">
       <h2>Shop by category</h2>
       <div class="catGrid" id="catGrid"></div>
 
@@ -122,6 +122,17 @@
       <div class="brandsRow" id="brandsRow"></div>
 
       <div class="hint" id="status">Loading…</div>
+    </div>
+
+    <div id="searchView" style="display:none">
+      <div class="toolbar" style="margin-top:12px">
+        <div class="hint" id="searchHint">—</div>
+      </div>
+      <div class="grid" id="searchGrid"></div>
+      <div class="loadmore" id="searchLoadMoreWrap" style="display:none">
+        <button class="pill" id="searchLoadMoreBtn">Load more</button>
+      </div>
+      <div class="hint" id="searchLoadingMore" style="display:none;text-align:center">Loading…</div>
     </div>
 
     <div id="categoryView" style="display:none">
@@ -195,7 +206,15 @@
       if (sort) url.searchParams.set("sort", String(sort));
       return url.toString();
     },
-    productDetails: (id) => `${BASE}/productDetails/${encodeURIComponent(id)}`
+    productDetails: (id) => `${BASE}/productDetails/${encodeURIComponent(id)}`,
+    search: (q, {page, limit, sort}={}) => {
+      const url = new URL(`${BASE}/products`);
+      url.searchParams.set("q", q);
+      if (page) url.searchParams.set("page", String(page));
+      if (limit) url.searchParams.set("limit", String(limit));
+      if (sort) url.searchParams.set("sort", String(sort));
+      return url.toString();
+    }
   };
 
   const $ = (id)=>document.getElementById(id);
@@ -216,7 +235,13 @@
     products: [],
     homeQuery: "",
     epoch: 0,          // incremented on every new load; stale responses are discarded
-    fetchController: null  // AbortController for in-flight requests
+    fetchController: null,  // AbortController for in-flight requests
+    searchQuery: "",
+    searchPage: 1,
+    searchTotal: null,
+    searchResults: [],
+    searchLoading: false,
+    searchDebounce: null
   };
 
   init();
@@ -234,9 +259,34 @@
     };
     $("homeBtn").onclick = goHome;
     $("homeSearch").addEventListener("input", (e) => {
-      state.homeQuery = (e.target.value || "").trim().toLowerCase();
-      renderHome();
+      const raw = (e.target.value || "").trim();
+      state.homeQuery = raw.toLowerCase();
+      if (state.searchDebounce) clearTimeout(state.searchDebounce);
+      if (raw.length < 2) {
+        state.searchQuery = "";
+        renderHome();
+        return;
+      }
+      state.searchDebounce = setTimeout(() => {
+        state.searchQuery = raw;
+        state.searchPage = 1;
+        state.searchResults = [];
+        state.searchTotal = null;
+        performSearch(true);
+      }, 400);
     });
+
+    $("searchGrid").onclick = (e) => {
+      const card = e.target.closest("[data-product-id]");
+      if (!card) return;
+      openPdp(card.dataset.productId);
+    };
+
+    $("searchLoadMoreBtn").onclick = () => {
+      if (state.searchLoading) return;
+      state.searchPage += 1;
+      performSearch(false);
+    };
 
     $("catGrid").onclick = (e) => {
       const el = e.target.closest("[data-cat-id]");
@@ -358,10 +408,100 @@
       </div>
     `).join("");
 
+    $("searchBar").style.display = "";
     $("homeView").style.display = "";
+    $("searchView").style.display = "none";
     $("categoryView").style.display = "none";
     $("factoryView").style.display = "none";
     state.view = "home";
+  }
+
+  async function performSearch(reset){
+    if (state.searchLoading) return;
+    state.searchLoading = true;
+    const q = state.searchQuery;
+
+    $("searchBar").style.display = "";
+    $("homeView").style.display = "none";
+    $("categoryView").style.display = "none";
+    $("factoryView").style.display = "none";
+    $("searchView").style.display = "";
+    state.view = "search";
+
+    $("searchLoadingMore").style.display = "";
+    $("searchLoadMoreBtn").disabled = true;
+    if (reset) {
+      $("searchGrid").innerHTML = `<div class="empty">Searching…</div>`;
+      $("searchHint").textContent = `Searching for "${q}"…`;
+      $("searchLoadMoreWrap").style.display = "none";
+    }
+
+    try {
+      const url = API.search(q, { page: state.searchPage, limit: 24 });
+      const res = await fetchJson(url);
+      if (!res?.success) throw new Error("search failed");
+
+      const items = Array.isArray(res.products) ? res.products.map(normalizeProduct) : [];
+      state.searchTotal = typeof res.total === "number" ? res.total : null;
+
+      if (reset) state.searchResults = items;
+      else state.searchResults = [...state.searchResults, ...items];
+
+      const shown = state.searchResults.length;
+      const total = state.searchTotal;
+
+      if (total != null) {
+        $("searchHint").textContent = `${total} result${total !== 1 ? "s" : ""} for "${q}"`;
+        $("searchLoadMoreWrap").style.display = shown < total ? "" : "none";
+      } else {
+        $("searchHint").textContent = `${shown} result${shown !== 1 ? "s" : ""} for "${q}"`;
+        $("searchLoadMoreWrap").style.display = items.length < 24 ? "none" : "";
+      }
+
+      renderSearchResults();
+    } catch(err) {
+      console.error(err);
+      $("searchGrid").innerHTML = `<div class="empty">Could not search. Check API / CORS.</div>`;
+      $("searchHint").textContent = `No results for "${q}"`;
+    } finally {
+      state.searchLoading = false;
+      $("searchLoadingMore").style.display = "none";
+      $("searchLoadMoreBtn").disabled = false;
+    }
+  }
+
+  function renderSearchResults(){
+    const items = state.searchResults;
+    if (!items.length){
+      $("searchGrid").innerHTML = `<div class="empty">No products found for "${state.searchQuery}".</div>`;
+      return;
+    }
+    $("searchGrid").innerHTML = items.map(p => {
+      const img = p.image;
+      const priceText = p.price == null ? "Price on request" : `$${fmt(p.price)}`;
+      const per = p.unitQuantity ? `/${p.unitQuantity}` : "";
+      const moq = p.moq ?? "—";
+      const unitLabel = p.unitLabel || "Carton";
+      return `
+        <div class="card" data-product-id="${escAttr(p.id)}">
+          <div class="card-top">
+            ${img
+              ? `<img src="${escAttr(img)}" alt="${escAttr(p.name)}"
+                   onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div style=\'color:var(--muted);font-weight:900\'>No image</div>';">`
+              : `<div style="color:var(--muted);font-weight:900">No image</div>`}
+          </div>
+          <div class="card-body">
+            <div class="pname">${esc(p.name)}</div>
+            <div class="price-row">
+              <div class="price">${esc(priceText)}</div>
+              <div class="per">${esc(per)}</div>
+            </div>
+            <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
+          </div>
+          <div class="soldby">Sold by : <span style="color:rgba(0,0,0,.78)">${esc(p.soldBy || "—")}</span></div>
+        </div>
+      `;
+    }).join("");
   }
 
   async function openCategory(categoryId, categoryName){
@@ -385,7 +525,9 @@
       state.subcategories = Array.isArray(details.subcategories) ? details.subcategories : [];
 
       setHeader(state.activeCategoryName, "Browse products", {showHomeBtn:true});
+      $("searchBar").style.display = "none";
       $("homeView").style.display = "none";
+      $("searchView").style.display = "none";
       $("categoryView").style.display = "";
       state.view = "category";
 
@@ -641,7 +783,9 @@
 
   async function openFactory(factoryId, factoryName){
     setHeader(factoryName || "Brand", "Loading…", {showHomeBtn:true});
+    $("searchBar").style.display = "none";
     $("homeView").style.display = "none";
+    $("searchView").style.display = "none";
     $("categoryView").style.display = "none";
     $("factoryView").style.display = "";
     state.view = "factory";
@@ -735,7 +879,15 @@
     }
   }
 
-  function goHome(){ abortPending(); state.epoch++; renderHome(); }
+  function goHome(){
+    abortPending();
+    state.epoch++;
+    if (state.searchDebounce) clearTimeout(state.searchDebounce);
+    $("homeSearch").value = "";
+    state.homeQuery = "";
+    state.searchQuery = "";
+    renderHome();
+  }
 
   function setHeader(title, subtitle, {showHomeBtn}){
     $("pageTitle").textContent = title;
