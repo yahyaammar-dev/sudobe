@@ -863,3 +863,50 @@ exports.getAllProducts = async (req, res) => {
     }
 };
 
+exports.getCategories = async (req, res) => {
+    try {
+        const result = await swell.get('/categories', {
+            where: { parent_id: null },
+            limit: 1000
+        });
+        res.json({ success: true, categories: result.results || [] });
+    } catch (err) {
+        console.error('Error in getCategories:', err.message);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
+exports.getSubcategories = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await swell.get('/categories', {
+            where: { parent_id: id },
+            limit: 1000
+        });
+        res.json({ success: true, subcategories: result.results || [] });
+    } catch (err) {
+        console.error('Error in getSubcategories:', err.message);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
+exports.getCategoryDetails = async (req, res) => {
+    const categoryId = req.params.id;
+    try {
+        const [subcategoriesResult, productsResult] = await Promise.all([
+            swell.get('/categories', { where: { parent_id: categoryId }, limit: 100 }),
+            swell.get('/products', { where: { 'category_index.id': categoryId, active: true }, limit: 20 })
+        ]);
+
+        res.json({
+            success: true,
+            category: categoryId,
+            subcategories: subcategoriesResult.results || [],
+            productsPreview: transformProducts(productsResult.results || [])
+        });
+    } catch (err) {
+        console.error('Error in getCategoryDetails:', err.message);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+

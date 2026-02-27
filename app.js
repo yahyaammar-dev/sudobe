@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Original API routes (for mobile app compatibility)
+// Original API routes (for mobile app compatibility) - No authentication required
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/catalogue', require('./routes/catalogueRoutes'));
 app.use('/api/checkout', require('./routes/checkoutRoutes'));
