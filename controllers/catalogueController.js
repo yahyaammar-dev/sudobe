@@ -588,24 +588,10 @@ exports.getByCategory = async (req, res) => {
             favoriteIds = user?.metadata?.favorites || [];
         }
 
-        // Step 3: First get verified factories to filter products
-        const verifiedFactoriesResponse = await swell.get('/accounts', {
-            where: {
-                'content.factory_name': { $ne: null },
-                'content.verified': true
-            },
-            limit: 1000
-        });
-
-        const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
-            .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
-            .map(factory => factory.id);
-
-        // Step 4: Fetch products in the given category, but only from verified factories
+        // Step 3: Fetch all active products in the given category
         const productsResponse = await swell.get(`/products?$locale=${locale}`, {
             where: {
                 'category_index.id': categoryId,
-                'content.factory_id': { $in: verifiedFactoryIds },
                 active: true
             },
             limit: parseInt(limit),
