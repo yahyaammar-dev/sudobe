@@ -564,7 +564,7 @@ exports.getProductDetails = async (req, res) => {
 
 exports.getByCategory = async (req, res) => {
     const categoryId = req.params.id;
-    const { page = 1, limit = 100, locale = 'en-US', account } = req.query;
+    const { page = 1, limit = 100, locale = 'en-US', account, all } = req.query;
 
     if (!categoryId) {
         return res.status(400).json({
@@ -588,15 +588,54 @@ exports.getByCategory = async (req, res) => {
             favoriteIds = user?.metadata?.favorites || [];
         }
 
-        // Step 3: Fetch all active products in the given category
-        const productsResponse = await swell.get(`/products?$locale=${locale}`, {
-            where: {
-                'category_index.id': categoryId,
-                active: true
-            },
-            limit: parseInt(limit),
-            page: parseInt(page),
-        });
+        // Step 3: Resolve category IDs — when all=true fetch products from every active subcategory
+        let resolvedIds = [categoryId];
+        if (all === 'true') {
+            const subcatRes = await swell.get('/categories', {
+                where: { parent_id: categoryId, active: true },
+                limit: 1000
+            });
+            const subcatIds = (subcatRes.results || []).map(s => s.id).filter(Boolean);
+            if (subcatIds.length) resolvedIds = subcatIds; // products live under subcats, not the parent
+        }
+
+        // Step 4: Fetch products — parallel per-subcategory requests then deduplicate
+        let productsResponse;
+        if (resolvedIds.length === 1) {
+            productsResponse = await swell.get(`/products?$locale=${locale}`, {
+                where: { 'category_index.id': resolvedIds[0], active: true },
+                limit: parseInt(limit),
+                page: parseInt(page),
+            });
+        } else {
+            // Fire one request per subcategory ID in parallel (guaranteed to work with Swell)
+            const responses = await Promise.all(
+                resolvedIds.map(id =>
+                    swell.get(`/products?$locale=${locale}`, {
+                        where: { 'category_index.id': id, active: true },
+                        limit: 250, // high per-subcat limit; we slice below
+                        page: 1,
+                    })
+                )
+            );
+            // Deduplicate by product id
+            const seen = new Set();
+            const merged = [];
+            for (const r of responses) {
+                for (const p of (r.results || [])) {
+                    if (!seen.has(p.id)) { seen.add(p.id); merged.push(p); }
+                }
+            }
+            const pageNum  = parseInt(page);
+            const limitNum = parseInt(limit);
+            const start    = (pageNum - 1) * limitNum;
+            productsResponse = {
+                results: merged.slice(start, start + limitNum),
+                count:   merged.length,
+                page:    pageNum,
+                pages:   Math.ceil(merged.length / limitNum)
+            };
+        }
 
         const products = productsResponse.results || [];
 
@@ -852,7 +891,7 @@ exports.getAllProducts = async (req, res) => {
 exports.getCategories = async (req, res) => {
     try {
         const result = await swell.get('/categories', {
-            where: { parent_id: null },
+            where: { parent_id: null, active: true },
             limit: 1000
         });
         res.json({ success: true, categories: result.results || [] });
@@ -866,7 +905,7 @@ exports.getSubcategories = async (req, res) => {
     try {
         const { id } = req.params;
         const result = await swell.get('/categories', {
-            where: { parent_id: id },
+            where: { parent_id: id, active: true },
             limit: 1000
         });
         res.json({ success: true, subcategories: result.results || [] });
@@ -880,7 +919,7 @@ exports.getCategoryDetails = async (req, res) => {
     const categoryId = req.params.id;
     try {
         const [subcategoriesResult, productsResult] = await Promise.all([
-            swell.get('/categories', { where: { parent_id: categoryId }, limit: 100 }),
+            swell.get('/categories', { where: { parent_id: categoryId, active: true }, limit: 100 }),
             swell.get('/products', { where: { 'category_index.id': categoryId, active: true }, limit: 20 })
         ]);
 
