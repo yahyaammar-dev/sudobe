@@ -53,11 +53,11 @@ async function processImageToSwell(imageUrl) {
 
     // Convert to base64
     const base64Data = Buffer.from(response.data).toString('base64');
-    
+
     // Extract filename from URL
     const urlParts = imageUrl.split('/');
     const filename = urlParts[urlParts.length - 1] || 'image.jpg';
-    
+
     // Upload to Swell
     const uploadedFile = await swell.post('/:files', {
       filename: filename,
@@ -83,17 +83,17 @@ async function processImageToSwell(imageUrl) {
 // Helper function to process all images for a product
 async function processProductImages(imageUrls) {
   const processedImages = [];
-  
+
   for (const imageUrl of imageUrls) {
     // Clean up the URL - remove extra whitespace and validate
     const cleanUrl = imageUrl.trim();
-    
+
     // Skip empty URLs
     if (!cleanUrl || cleanUrl === '') {
       console.log('Skipping empty image URL');
       continue;
     }
-    
+
     // Basic URL validation
     try {
       new URL(cleanUrl);
@@ -101,7 +101,7 @@ async function processProductImages(imageUrls) {
       console.error(`Invalid URL format: ${cleanUrl}`, urlError.message);
       continue;
     }
-    
+
     try {
       const processedImage = await processImageToSwell(cleanUrl);
       if (processedImage) {
@@ -128,7 +128,7 @@ async function processProductImages(imageUrls) {
       console.error(`Failed to process image ${cleanUrl}:`, error);
     }
   }
-  
+
   return processedImages;
 }
 
@@ -195,12 +195,12 @@ async function findExistingProduct(mainUPC, productId = null) {
         },
         limit: 1
       });
-      
+
       if (searchByUPC.results && searchByUPC.results.length > 0) {
         return searchByUPC.results[0];
       }
     }
-    
+
     // If not found by UPC and we have a productId, try to find by ID
     if (productId) {
       try {
@@ -210,7 +210,7 @@ async function findExistingProduct(mainUPC, productId = null) {
         // Product not found by ID, continue
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error finding existing product:', error);
@@ -221,9 +221,9 @@ async function findExistingProduct(mainUPC, productId = null) {
 // Helper function to check if an image URL is already a Swell image
 function isExistingSwellImage(imageUrl, existingProduct) {
   if (!existingProduct || !existingProduct.images) return false;
-  
-  return existingProduct.images.some(img => 
-    img.url === imageUrl || 
+
+  return existingProduct.images.some(img =>
+    img.url === imageUrl ||
     img.file?.url === imageUrl ||
     (img.file && img.file.url === imageUrl)
   );
@@ -233,7 +233,7 @@ function isExistingSwellImage(imageUrl, existingProduct) {
 async function processImagesForExistingProduct(imageUrls, existingProduct) {
   const processedImages = [];
   const existingImages = existingProduct.images || [];
-  
+
   // Keep existing Swell images
   for (const existingImg of existingImages) {
     if (existingImg.url || existingImg.file?.url) {
@@ -244,22 +244,22 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
       });
     }
   }
-  
+
   // Process only new images (not already in Swell)
   for (const imageUrl of imageUrls) {
     const cleanUrl = imageUrl.trim();
-    
+
     // Skip empty URLs
     if (!cleanUrl || cleanUrl === '') {
       continue;
     }
-    
+
     // Skip if this image is already in the product
     if (isExistingSwellImage(cleanUrl, existingProduct)) {
       console.log(`Image already exists in product: ${cleanUrl}`);
       continue;
     }
-    
+
     // Skip if it's already a Swell URL (to avoid re-uploading)
     if (isSwellUrl(cleanUrl)) {
       console.log(`Image is already a Swell URL: ${cleanUrl}`);
@@ -269,7 +269,7 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
       });
       continue;
     }
-    
+
     // Basic URL validation
     try {
       new URL(cleanUrl);
@@ -277,7 +277,7 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
       console.error(`Invalid URL format: ${cleanUrl}`, urlError.message);
       continue;
     }
-    
+
     try {
       console.log(`Processing new image: ${cleanUrl}`);
       const processedImage = await processImageToSwell(cleanUrl);
@@ -293,7 +293,7 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
       console.error(`Failed to process image ${cleanUrl}:`, error);
     }
   }
-  
+
   return processedImages;
 }
 
@@ -303,7 +303,7 @@ router.get('/', verifyToken, async (req, res) => {
   try {
     const userId = req.user?.id || null;
     const userEmail = req.user?.email || null;
-    
+
     if (userId) {
       await ActivityLogger.log({
         userId: userId,
@@ -324,7 +324,7 @@ router.get('/', verifyToken, async (req, res) => {
     // Don't break the request if logging fails
     console.error('[ACTIVITY LOG] Error logging activity:', logError);
   }
-  
+
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
@@ -345,7 +345,7 @@ router.get('/products', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const factoryId = req.query.factory || '';
-    
+
     // Build query options
     const queryOptions = {
       search: searchTerm,
@@ -353,7 +353,7 @@ router.get('/products', async (req, res) => {
       page: page,
       expand: ['variants', 'category', 'images']
     };
-    
+
     // If a specific factory is selected, filter by that factory
     if (factoryId) {
       queryOptions.where = {
@@ -363,21 +363,21 @@ router.get('/products', async (req, res) => {
       // If no specific factory is selected, filter by all verified factories
       const verifiedFactories = await fetchFactories();
       const verifiedFactoryIds = verifiedFactories.map(f => f.id);
-      
+
       if (verifiedFactoryIds.length > 0) {
         queryOptions.where = {
           'content.factory_id': { $in: verifiedFactoryIds }
         };
       }
     }
-    
+
     // Fetch products with pagination
     const result = await swell.get('/products', queryOptions);
-    
+
     // Calculate total pages from count and limit
     const totalProducts = result.count || 0;
     const totalPages = Math.ceil(totalProducts / limit);
-    
+
     // Return full result with pagination data
     res.json({
       results: result.results || [],
@@ -640,7 +640,7 @@ router.delete('/banners/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await swell.delete(`/content/banners/${id}`);
-    
+
     // Log the activity
     ActivityLogger.log({
       userId: req.user?.id,
@@ -652,7 +652,7 @@ router.delete('/banners/:id', async (req, res) => {
       metadata: { bannerId: id },
       req
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting banner:', error);
@@ -664,7 +664,7 @@ router.delete('/protections/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await swell.delete(`/content/protection/${id}`);
-    
+
     // Log the activity
     ActivityLogger.log({
       userId: req.user?.id,
@@ -676,7 +676,7 @@ router.delete('/protections/:id', async (req, res) => {
       metadata: { protectionId: id },
       req
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting protection:', error);
@@ -716,7 +716,7 @@ router.put('/banners/:id', upload.single('bannerImage'), async (req, res) => {
     if (imageAsset) payload.content.image = imageAsset;
 
     await swell.put(`/content/banners/${req.params.id}`, payload);
-    
+
     // Log the activity
     ActivityLogger.log({
       userId: req.user?.id,
@@ -728,7 +728,7 @@ router.put('/banners/:id', upload.single('bannerImage'), async (req, res) => {
       metadata: { bannerType, bannerValue, priority },
       req
     });
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating banner:', err);
@@ -770,7 +770,7 @@ router.put('/protections/:id', upload.single('proctectionIcon'), async (req, res
     if (imageAsset) payload.content.icon = imageAsset;
 
     await swell.put(`/content/protection/${req.params.id}`, payload);
-    
+
     // Log the activity
     ActivityLogger.log({
       userId: req.user?.id,
@@ -782,7 +782,7 @@ router.put('/protections/:id', upload.single('proctectionIcon'), async (req, res
       metadata: { title, short_description },
       req
     });
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating protection:', err);
@@ -794,11 +794,11 @@ router.put('/protections/:id', upload.single('proctectionIcon'), async (req, res
 router.post('/products', upload.single('excelFile'), async (req, res) => {
   try {
     const excelFile = req.file;
-    
+
     if (!excelFile) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Excel file is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Excel file is required'
       });
     }
 
@@ -808,7 +808,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       'application/vnd.ms-excel',
       'application/vnd.ms-excel.sheet.macroEnabled.12'
     ];
-    
+
     if (!allowedMimeTypes.includes(excelFile.mimetype)) {
       return res.status(400).json({
         success: false,
@@ -820,35 +820,35 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     let workbook, sheetName, worksheet, jsonData;
     try {
       workbook = xlsx.read(excelFile.buffer, { type: 'buffer' });
-      
+
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
         return res.status(400).json({
           success: false,
           error: 'Excel file contains no worksheets'
         });
       }
-      
+
       sheetName = workbook.SheetNames[0];
       worksheet = workbook.Sheets[sheetName];
-      
+
       if (!worksheet) {
         return res.status(400).json({
           success: false,
           error: 'First worksheet is empty or corrupted'
         });
       }
-      
+
       // Parse with header option to ensure all columns are included
-      jsonData = xlsx.utils.sheet_to_json(worksheet, { 
+      jsonData = xlsx.utils.sheet_to_json(worksheet, {
         header: 1, // Use first row as header
         defval: '' // Default value for empty cells
       });
-      
+
       // Convert to object format with proper headers
       if (jsonData.length > 0) {
         const headers = jsonData[0];
         const dataRows = jsonData.slice(1);
-        
+
         jsonData = dataRows.map(row => {
           const obj = {};
           headers.forEach((header, index) => {
@@ -857,7 +857,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           return obj;
         });
       }
-      
+
       if (!jsonData || jsonData.length === 0) {
         return res.status(400).json({
           success: false,
@@ -882,7 +882,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       'FactoryName',
       'FactoryID'
     ];
-    
+
     const optionalColumns = [
       'ProductID',
       'ProductNameFR',
@@ -924,27 +924,27 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     const templateErrors = [];
     const firstRow = jsonData[0];
     const availableColumns = Object.keys(firstRow);
-    
+
     // Add debugging to see what's in the first row
     console.log('First row data:', firstRow);
     console.log('Available columns:', availableColumns);
-    
+
     // Filter out empty columns (__EMPTY, __EMPTY_1, etc.)
-    const validColumns = availableColumns.filter(col => 
-      !col.startsWith('__EMPTY') && 
-      col !== undefined && 
+    const validColumns = availableColumns.filter(col =>
+      !col.startsWith('__EMPTY') &&
+      col !== undefined &&
       col !== null &&
       col.trim() !== '' // Add this to filter out empty strings
     );
-    
+
     console.log('Valid columns after filtering:', validColumns);
-    
+
     // Check for required columns
     for (const requiredCol of requiredColumns) {
       if (!validColumns.includes(requiredCol)) {
         // Check if the column exists but is empty in all rows
         const columnExistsInData = jsonData.some(row => row.hasOwnProperty(requiredCol));
-        
+
         if (columnExistsInData) {
           // Column exists but is empty - this is acceptable for optional data
           console.log(`Column ${requiredCol} exists but is empty in all rows - this is acceptable`);
@@ -953,7 +953,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         }
       }
     }
-    
+
     // Check for unexpected columns (not in required or optional)
     const allValidColumns = [...requiredColumns, ...optionalColumns];
     for (const col of validColumns) {
@@ -961,7 +961,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         templateErrors.push(`Unexpected column found: ${col}. Please check the template format.`);
       }
     }
-    
+
     if (templateErrors.length > 0) {
       return res.status(400).json({
         success: false,
@@ -976,13 +976,13 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     // Validate data quality
     const dataErrors = [];
     let validRows = 0;
-    
+
     // Group rows by Main-UPC first to understand the structure
     const productGroups = {};
     jsonData.forEach(row => {
       const mainUPC = row['Main-UPC'];
       if (!mainUPC) return; // Skip rows without Main-UPC
-      
+
       if (!productGroups[mainUPC]) {
         productGroups[mainUPC] = [];
       }
@@ -992,7 +992,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     // Validate each product group
     for (const [mainUPC, rows] of Object.entries(productGroups)) {
       const groupErrors = [];
-      
+
       // Check if we have at least one row
       if (rows.length === 0) {
         groupErrors.push('No data rows found for this product');
@@ -1006,73 +1006,73 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       // Validate the first row (main product data)
       const firstRow = rows[0];
       const firstRowErrors = [];
-      
+
       // Check required fields for main product
       if (!firstRow['Main-UPC'] || firstRow['Main-UPC'].toString().trim() === '') {
         firstRowErrors.push('Main-UPC is required');
       }
-      
+
       if (!firstRow['ProductNameEN'] || firstRow['ProductNameEN'].toString().trim() === '') {
         firstRowErrors.push('ProductNameEN is required');
       }
-      
+
       if (firstRow['Price'] && isNaN(parseFloat(firstRow['Price']))) {
         firstRowErrors.push('Price must be a valid number');
       }
-      
+
       if (!firstRow['CategoryID'] || firstRow['CategoryID'].toString().trim() === '') {
         firstRowErrors.push('CategoryID is required');
       }
-      
+
       if (!firstRow['FactoryName'] || firstRow['FactoryName'].toString().trim() === '') {
         firstRowErrors.push('FactoryName is required');
       }
-      
+
       if (!firstRow['FactoryID'] || firstRow['FactoryID'].toString().trim() === '') {
         firstRowErrors.push('FactoryID is required');
       }
-      
+
       // Validate numeric fields for main product
       if (firstRow['Price'] && isNaN(parseFloat(firstRow['Price']))) {
         firstRowErrors.push('Price must be a valid number');
       }
-      
+
       if (firstRow['OldPrice'] && isNaN(parseFloat(firstRow['OldPrice']))) {
         firstRowErrors.push('OldPrice must be a valid number');
       }
-      
+
       if (firstRow['WeightValu'] && isNaN(parseFloat(firstRow['WeightValu']))) {
         firstRowErrors.push('WeightValu must be a valid number');
       }
-      
+
       if (firstRow['CartonLength'] && isNaN(parseFloat(firstRow['CartonLength']))) {
         firstRowErrors.push('CartonLength must be a valid number');
       }
-      
+
       if (firstRow['CartonWidth'] && isNaN(parseFloat(firstRow['CartonWidth']))) {
         firstRowErrors.push('CartonWidth must be a valid number');
       }
-      
+
       if (firstRow['CartonHeight'] && isNaN(parseFloat(firstRow['CartonHeight']))) {
         firstRowErrors.push('CartonHeight must be a valid number');
       }
-      
+
       if (firstRow['MinDays'] && isNaN(parseInt(firstRow['MinDays']))) {
         firstRowErrors.push('MinDays must be a valid integer');
       }
-      
+
       if (firstRow['MaxDays'] && isNaN(parseInt(firstRow['MaxDays']))) {
         firstRowErrors.push('MaxDays must be a valid integer');
       }
-      
+
       if (firstRow['MinmumQuantity'] && isNaN(parseInt(firstRow['MinmumQuantity']))) {
         firstRowErrors.push('MinmumQuantity must be a valid integer');
       }
-      
+
       if (firstRow['Quantity20-FT'] && isNaN(parseInt(firstRow['Quantity20-FT']))) {
         firstRowErrors.push('Quantity20-FT must be a valid integer');
       }
-      
+
       if (firstRow['Quantity40-FT-HC'] && isNaN(parseInt(firstRow['Quantity40-FT-HC']))) {
         firstRowErrors.push('Quantity40-FT-HC must be a valid integer');
       }
@@ -1080,7 +1080,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       if (firstRow['UnitPerCarton'] && isNaN(parseInt(firstRow['UnitPerCarton']))) {
         firstRowErrors.push('UnitPerCarton must be a valid integer');
       }
-      
+
       if (firstRowErrors.length > 0) {
         dataErrors.push({
           main_upc: mainUPC,
@@ -1097,53 +1097,53 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           const variantRow = rows[i];
           const variantErrors = [];
           const rowNumber = i + 2; // +2 because Excel is 1-indexed and we skip header
-          
+
           // For variant rows, only validate variant-specific fields
           if (variantRow['VariantType'] && !variantRow['VariantValue']) {
             variantErrors.push('VariantValue is required when VariantType is provided');
           }
-          
+
           if (variantRow['VariantValue'] && !variantRow['VariantType']) {
             variantErrors.push('VariantType is required when VariantValue is provided');
           }
-          
+
           if (variantRow['VariantPrice'] && isNaN(parseFloat(variantRow['VariantPrice']))) {
             variantErrors.push('VariantPrice must be a valid number');
           }
-          
+
           // Validate numeric fields for variants
           if (variantRow['WeightValu'] && isNaN(parseFloat(variantRow['WeightValu']))) {
             variantErrors.push('WeightValu must be a valid number');
           }
-          
+
           if (variantRow['CartonLength'] && isNaN(parseFloat(variantRow['CartonLength']))) {
             variantErrors.push('CartonLength must be a valid number');
           }
-          
+
           if (variantRow['CartonWidth'] && isNaN(parseFloat(variantRow['CartonWidth']))) {
             variantErrors.push('CartonWidth must be a valid number');
           }
-          
+
           if (variantRow['CartonHeight'] && isNaN(parseFloat(variantRow['CartonHeight']))) {
             variantErrors.push('CartonHeight must be a valid number');
           }
-          
+
           if (variantRow['MinDays'] && isNaN(parseInt(variantRow['MinDays']))) {
             variantErrors.push('MinDays must be a valid integer');
           }
-          
+
           if (variantRow['MaxDays'] && isNaN(parseInt(variantRow['MaxDays']))) {
             variantErrors.push('MaxDays must be a valid integer');
           }
-          
+
           if (variantRow['MinmumQuantity'] && isNaN(parseInt(variantRow['MinmumQuantity']))) {
             variantErrors.push('MinmumQuantity must be a valid integer');
           }
-          
+
           if (variantRow['Quantity20-FT'] && isNaN(parseInt(variantRow['Quantity20-FT']))) {
             variantErrors.push('Quantity20-FT must be a valid integer');
           }
-          
+
           if (variantRow['Quantity40-FT-HC'] && isNaN(parseInt(variantRow['Quantity40-FT-HC']))) {
             variantErrors.push('Quantity40-FT-HC must be a valid integer');
           }
@@ -1151,7 +1151,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           if (variantRow['UnitPerCarton'] && isNaN(parseInt(variantRow['UnitPerCarton']))) {
             variantErrors.push('UnitPerCarton must be a valid integer');
           }
-          
+
           if (variantErrors.length > 0) {
             dataErrors.push({
               main_upc: mainUPC,
@@ -1162,7 +1162,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         }
       }
     }
-    
+
     // If there are data validation errors, return them
     if (dataErrors.length > 0) {
       return res.status(400).json({
@@ -1178,7 +1178,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     // Group rows by Main-UPC (this was already done above, but keeping for consistency)
     // Remove the duplicate declaration - productGroups already exists from line 653
     // Also remove the duplicate grouping - it was already done during validation
-    
+
     // Remove this entire block since productGroups is already populated:
     // jsonData.forEach(row => {
     //   const mainUPC = row['Main-UPC'];
@@ -1198,7 +1198,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       try {
         // Use the first row for main product data
         const mainRow = rows[0];
-        
+
         // Collect all images from all rows in the group
         const allImages = [];
         rows.forEach((row, index) => {
@@ -1208,7 +1208,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
               .split(',')
               .map(img => img.trim())
               .filter(img => img && img.length > 0); // Filter out empty strings
-            
+
             console.log(`Processed row images:`, rowImages);
             allImages.push(...rowImages);
           }
@@ -1227,15 +1227,15 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         // Build variants from all rows
         const variants = [];
         const optionValues = {};
-        
+
         rows.forEach(row => {
           if (row.VariantType && row.VariantValue) {
             // Group variants by type
             if (!optionValues[row.VariantType]) {
               optionValues[row.VariantType] = [];
             }
-            
-            console.log("Variant carton dimension is:: " , `${row.CartonLength} x ${row.CartonWidth} x ${row.CartonHeight}`)
+
+            console.log("Variant carton dimension is:: ", `${row.CartonLength} x ${row.CartonWidth} x ${row.CartonHeight}`)
 
             optionValues[row.VariantType].push({
               name: row.VariantValue,
@@ -1272,7 +1272,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           price: parseFloat(mainRow.Price) || 0,
           sale_price: parseFloat(mainRow.OldPrice) || null,
           active: true,
-          category_id: mainRow.CategoryID,  
+          category_id: mainRow.CategoryID,
           images: processedImages, // Use the processed images
           $locale: {
             'en-US': {
@@ -1300,7 +1300,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             unit_quantity: mainRow.UnitQuantity,
             unit_quantity_fr: mainRow.UnitQuantityFR,
             expiry_date: mainRow.ExpiryDate,
-            
+
             // Physical properties
             weight_value: parseFloat(mainRow.WeightValu) || 0,
             weight_unit: mainRow.WeightUnit,
@@ -1308,11 +1308,11 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             carton_width: parseFloat(mainRow.CartonWidth) || 0,
             carton_height: parseFloat(mainRow.CartonHeight) || 0,
             dimension_unit: mainRow.DimensionUnit,
-            
+
             // Lead time
             min_days: parseInt(mainRow.MinDays) || 0,
             max_days: parseInt(mainRow.MaxDays) || 0,
-            
+
             // FLC quantities
             flc_quantity: [
               {
@@ -1360,13 +1360,13 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         const existingProduct = await findExistingProduct(mainRow['Main-UPC'], mainRow['ProductID']);
 
         if (existingProduct) {
-          
+
           // Process images for existing product (avoid duplicates)
           const processedImages = await processImagesForExistingProduct(uniqueImages, existingProduct);
-          
+
           // Update productData with processed images
           productData.images = processedImages;
-          
+
           // Update existing product
           try {
             const updatedProduct = await swell.put(`/products/${existingProduct.id}`, productData);
@@ -1386,19 +1386,19 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           }
         } else {
           console.log(`Creating new product with Main-UPC: ${mainRow['Main-UPC']}`);
-          
+
           // Process images normally for new products
           console.log(`Processing ${uniqueImages.length} images for new product ${mainUPC}`);
           const processedImages = await processProductImages(uniqueImages);
           console.log(`Successfully processed ${processedImages.length} images`);
-          
+
           // Update productData with processed images
           productData.images = processedImages;
-          
+
           // Create new product
           try {
             const createdProduct = await swell.post('/products', productData);
-            
+
             // Check if the response contains errors
             if (createdProduct.errors && Object.keys(createdProduct.errors).length > 0) {
               console.error(`Product creation failed with errors:`, createdProduct.errors);
@@ -1439,10 +1439,10 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
     // Determine overall success based on whether there are any errors
     const hasErrors = errors.length > 0;
     const successCount = createdProducts.length;
-    
+
     res.json({
       success: !hasErrors,
-      message: hasErrors 
+      message: hasErrors
         ? `Import completed with ${errors.length} errors. ${successCount} products processed successfully.`
         : `Successfully processed ${successCount} product groups from Excel`,
       products: createdProducts,
@@ -1456,10 +1456,10 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
 
   } catch (error) {
     console.error('Error processing Excel file:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to process Excel file',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -1486,7 +1486,7 @@ router.get('/products/export', async (req, res) => {
 
     // Merge products from both locales by product ID
     const productsMap = new Map();
-    
+
     // Add English products
     productsEN.forEach(product => {
       productsMap.set(product.id, {
@@ -1494,7 +1494,7 @@ router.get('/products/export', async (req, res) => {
         en_data: product
       });
     });
-    
+
     // Merge with French products
     productsFR.forEach(product => {
       if (productsMap.has(product.id)) {
@@ -1519,13 +1519,13 @@ router.get('/products/export', async (req, res) => {
     // Extract unique category IDs and factory IDs for bulk fetching
     const categoryIds = new Set();
     const factoryIds = new Set();
-    
+
     products.forEach(product => {
       // Extract category IDs from category_index
       if (product.category_index?.id && Array.isArray(product.category_index.id)) {
         product.category_index.id.forEach(id => categoryIds.add(id));
       }
-      
+
       // Extract factory IDs
       if (product.content?.factory_id) {
         factoryIds.add(product.content.factory_id);
@@ -1540,7 +1540,7 @@ router.get('/products/export', async (req, res) => {
           where: { id: { $in: Array.from(categoryIds) } },
           limit: categoryIds.size
         });
-        
+
         (categoriesResponse.results || []).forEach(category => {
           categoryMap[category.id] = category.name;
         });
@@ -1558,7 +1558,7 @@ router.get('/products/export', async (req, res) => {
           where: { id: { $in: Array.from(factoryIds) } },
           limit: factoryIds.size
         });
-        
+
         (factoriesResponse.results || []).forEach(factory => {
           factoryMap[factory.id] = factory.name;
         });
@@ -1576,7 +1576,7 @@ router.get('/products/export', async (req, res) => {
       const categoryIds = product.category_index?.id || [];
       let categoryId = '';
       let categoryName = '';
-      
+
       // Find the first category ID that has a name in our categoryMap
       for (const catId of categoryIds) {
         if (categoryMap[catId]) {
@@ -1593,7 +1593,7 @@ router.get('/products/export', async (req, res) => {
       // Get main product data from both locales
       const productEN = product.en_data || product;
       const productFR = product.fr_data || product;
-      
+
       const mainRow = {
         'Main-UPC': product.content?.main_upc || product.id,
         'ProductID': product.id, // Add the Swell product ID after Main-UPC
@@ -1778,7 +1778,7 @@ router.get('/products/export', async (req, res) => {
       { wch: 30 }, // TagsEn
       { wch: 30 }  // TagsFR
     ];
-    
+
     worksheet['!cols'] = columnWidths;
 
     // Add worksheet to workbook
@@ -1789,7 +1789,7 @@ router.get('/products/export', async (req, res) => {
 
     // Set response headers for file download
     const filename = `products_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-    
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', excelBuffer.length);
@@ -1911,7 +1911,7 @@ router.get('/products/export-pdf', async (req, res) => {
     products.forEach(product => {
       const factoryId = product.content?.factory_id;
       if (!factoryId) return;
-      
+
       if (!productsByFactory[factoryId]) {
         productsByFactory[factoryId] = [];
       }
@@ -1919,8 +1919,8 @@ router.get('/products/export-pdf', async (req, res) => {
     });
 
     const factoryNames = factoryIdArray.map(fid => factoriesMap[fid]);
-    const displayTitle = factoryNames.length === 1 
-      ? factoryNames[0] 
+    const displayTitle = factoryNames.length === 1
+      ? factoryNames[0]
       : `${factoryNames.length} Factories`;
 
     // Sort factories by name for consistent display
@@ -1947,7 +1947,7 @@ router.get('/products/export-pdf', async (req, res) => {
     if (logoBuffer) {
       try {
         console.log('Creating logo image with ImageRun, buffer size:', logoBuffer.length);
-        
+
         // Create ImageRun directly with the buffer data (as per docx documentation)
         const logoImageRun = new ImageRun({
           type: 'jpeg', // or 'jpg' - both work
@@ -1957,9 +1957,9 @@ router.get('/products/export-pdf', async (req, res) => {
             height: 80,
           },
         });
-        
+
         console.log('Logo ImageRun created successfully');
-        
+
         // Build header table with logo
         const headerRowsWithLogo = [
           new TableRow({
@@ -2021,14 +2021,14 @@ router.get('/products/export-pdf', async (req, res) => {
             height: { value: 2160, rule: 'exact' }
           })
         ];
-        
+
         // Use full page width for header table (12240 twips = 8.5 inches for US Letter)
         headerTable = new Table({
           width: { size: 12240, type: WidthType.DXA }, // Full page width (US Letter: 8.5" = 12240 twips)
           columnWidths: [6120, 6120], // Equal width columns (50% each = 6120 twips)
           rows: headerRowsWithLogo
         });
-        
+
         console.log('Header table built with logo using ImageRun');
       } catch (error) {
         console.error('Error creating logo ImageRun:', error);
@@ -2173,7 +2173,7 @@ router.get('/products/export-pdf', async (req, res) => {
       }),
       new Paragraph({
         children: [
-          new TextRun({ 
+          new TextRun({
             text: `Products Export - ${displayTitle}`,
             font: 'Arial',
             size: 32,
@@ -2215,34 +2215,34 @@ router.get('/products/export-pdf', async (req, res) => {
 
     // Build table rows for all factories
     const tableRows = [];
-    
+
     // Add table header row
     tableRows.push(
       new TableRow({
         children: [
           new TableCell({
-            children: [new Paragraph({ 
+            children: [new Paragraph({
               children: [new TextRun({ text: 'FACTORY NAME', bold: true, font: 'Arial', color: 'FFFFFF' })],
               alignment: AlignmentType.CENTER
             })],
             shading: { fill: '0c373c', color: 'FFFFFF' }
           }),
           new TableCell({
-            children: [new Paragraph({ 
+            children: [new Paragraph({
               children: [new TextRun({ text: 'PRODUCT NAME', bold: true, font: 'Arial', color: 'FFFFFF' })],
               alignment: AlignmentType.CENTER
             })],
             shading: { fill: '0c373c', color: 'FFFFFF' }
           }),
           new TableCell({
-            children: [new Paragraph({ 
+            children: [new Paragraph({
               children: [new TextRun({ text: 'QUANTITY PER CARTON', bold: true, font: 'Arial', color: 'FFFFFF' })],
               alignment: AlignmentType.CENTER
             })],
             shading: { fill: '0c373c', color: 'FFFFFF' }
           }),
           new TableCell({
-            children: [new Paragraph({ 
+            children: [new Paragraph({
               children: [new TextRun({ text: 'PRICE', bold: true, font: 'Arial', color: 'FFFFFF' })],
               alignment: AlignmentType.CENTER
             })],
@@ -2251,12 +2251,12 @@ router.get('/products/export-pdf', async (req, res) => {
         ]
       })
     );
-    
+
     // Add factory sections and product rows
     sortedFactoryIds.forEach(factoryId => {
       const factoryProducts = productsByFactory[factoryId];
       const factoryName = factoriesMap[factoryId];
-      
+
       // Add factory header row
       tableRows.push(
         new TableRow({
@@ -2265,7 +2265,7 @@ router.get('/products/export-pdf', async (req, res) => {
               children: [
                 new Paragraph({
                   children: [
-                    new TextRun({ 
+                    new TextRun({
                       text: `${factoryName} (${factoryProducts.length} product${factoryProducts.length !== 1 ? 's' : ''})`,
                       bold: true,
                       font: 'Arial'
@@ -2280,36 +2280,36 @@ router.get('/products/export-pdf', async (req, res) => {
           ]
         })
       );
-      
+
       // Add product rows for this factory
       factoryProducts.forEach(product => {
         const productName = product.name || 'N/A';
         const quantityPerCarton = product.content?.unit_quantity || product.content?.unit_quantity_fr || 'N/A';
         const price = product.price ? `$${parseFloat(product.price).toFixed(2)}` : 'N/A';
-        
+
         tableRows.push(
           new TableRow({
             children: [
               new TableCell({
-                children: [new Paragraph({ 
+                children: [new Paragraph({
                   children: [new TextRun({ text: factoryName, font: 'Arial' })],
                   alignment: AlignmentType.CENTER
                 })]
               }),
               new TableCell({
-                children: [new Paragraph({ 
+                children: [new Paragraph({
                   children: [new TextRun({ text: productName, font: 'Arial' })],
                   alignment: AlignmentType.CENTER
                 })]
               }),
               new TableCell({
-                children: [new Paragraph({ 
+                children: [new Paragraph({
                   children: [new TextRun({ text: String(quantityPerCarton), font: 'Arial' })],
                   alignment: AlignmentType.CENTER
                 })]
               }),
               new TableCell({
-                children: [new Paragraph({ 
+                children: [new Paragraph({
                   children: [new TextRun({ text: price, font: 'Arial' })],
                   alignment: AlignmentType.CENTER
                 })]
@@ -2319,12 +2319,12 @@ router.get('/products/export-pdf', async (req, res) => {
         );
       });
     });
-    
+
     // Add the table to document elements with 1 inch margins on left and right
     // Page width is 12240 twips (8.5 inches)
     // With 1 inch (1440 twips) margins on each side: 12240 - 2880 = 9360 twips available
     // Scale column widths proportionally: 2000, 5000, 1500, 1500 -> 1872, 4680, 1404, 1404
-    
+
     // Add the product table with 0.5 inch margins on both sides
     docElements.push(
       new Table({
@@ -2381,7 +2381,7 @@ router.get('/products/export-pdf', async (req, res) => {
             },
             margin: {
               top: 0,      // No margin (header handles top)
-              right: 0, 
+              right: 0,
               bottom: 0,   // No margin (footer handles bottom)
               left: 0,
               header: 0,   // Header distance from edge (0 twips = 0 inches)

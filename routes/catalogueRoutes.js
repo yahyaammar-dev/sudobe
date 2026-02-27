@@ -9,5 +9,6 @@ router.get('/featured-products', catalogueController.getFeaturedProducts);
 router.get('/factories', catalogueController.getFactories);
 router.get('/productDetails/:id', catalogueController.getProductDetails);
 router.get('/byCategory/:id', catalogueController.getByCategory);
+router.get('/products', catalogueController.getAllProducts);
 
 module.exports = router;

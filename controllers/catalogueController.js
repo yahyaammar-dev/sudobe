@@ -383,7 +383,7 @@ exports.getFeaturedProducts = async (req, res) => {
             },
             limit: 1000
         });
-        
+
         const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
             .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
             .map(factory => factory.id);
@@ -596,7 +596,7 @@ exports.getByCategory = async (req, res) => {
             },
             limit: 1000
         });
-        
+
         const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
             .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
             .map(factory => factory.id);
@@ -737,3 +737,129 @@ exports.getByCategory = async (req, res) => {
     }
 
 };
+
+
+exports.getAllProducts = async (req, res) => {
+    try {
+        const {
+            q,              // search query
+            limit = 25,
+            page = 1,
+            category,       // optional: category ID
+            sort,           // optional: "name asc", "price desc", etc.
+            account,        // optional: for favorites
+            locale = 'en-US'
+        } = req.query;
+
+        const parsedPage = parseInt(page, 10);
+        const parsedLimit = parseInt(limit, 10);
+
+        // Step 1: Get promotions for discounts
+        const promotionsResponse = await swell.get('/promotions', {
+            where: { active: true }
+        });
+
+        // Step 2: Fetch user (optional) for favorites
+        let favoriteIds = [];
+        if (account) {
+            const user = await swell.get(`/accounts/${account}`, {
+                fields: ['metadata.favorites']
+            });
+            favoriteIds = user?.metadata?.favorites || [];
+        }
+
+        // Step 3: Get verified factories to filter products
+        const verifiedFactoriesResponse = await swell.get('/accounts', {
+            where: {
+                'content.factory_name': { $ne: null },
+                'content.verified': true
+            },
+            limit: 1000
+        });
+
+        const verifiedFactoryIds = (verifiedFactoriesResponse.results || [])
+            .filter(acc => acc.content?.factory_name?.trim() && acc.content?.verified)
+            .map(factory => factory.id);
+
+        // Step 4: Build where clause
+        const where = {
+            active: true,
+            'content.factory_id': { $in: verifiedFactoryIds }
+        };
+        if (category) {
+            where['category_index.id'] = category;
+        }
+
+        // Step 5: Fetch products from Swell
+        const result = await swell.get(`/products?$locale=${locale}`, {
+            search: q || undefined,
+            where,
+            limit: parsedLimit,
+            page: parsedPage,
+            sort: sort || undefined,
+        });
+
+        const products = result.results || [];
+
+        // Step 6: Fetch factory info in bulk
+        const factoryIds = [...new Set(products.map(p => p.content?.factory_id).filter(Boolean))];
+        const factoryMap = {};
+        if (factoryIds.length > 0) {
+            const factories = await swell.get('/accounts', {
+                where: { id: { $in: factoryIds } },
+                limit: factoryIds.length
+            });
+            for (const factory of factories.results || []) {
+                factoryMap[factory.id] = factory;
+            }
+        }
+
+        // Step 7: Map discounts
+        const discountMap = {};
+        for (const promo of promotionsResponse.results || []) {
+            for (const discount of promo.discounts || []) {
+                if (discount.type === 'product' && discount.value_type === 'percent') {
+                    discountMap[discount.product_id] = discount.value_percent;
+                }
+            }
+        }
+
+        // Step 8: Enrich products
+        const enrichedProducts = products.map(product => {
+            const discountPercent = discountMap[product.id] || 0;
+            const discountedPrice = discountPercent
+                ? +(product.price * (1 - discountPercent / 100)).toFixed(2)
+                : null;
+            const factoryId = product.content?.factory_id;
+            const factory = factoryMap[factoryId] || null;
+
+            return {
+                ...product,
+                isFavorite: favoriteIds.includes(product.id),
+                discount_percent: discountPercent,
+                discounted_price: discountedPrice,
+                content: {
+                    ...product.content,
+                    factory,
+                },
+            };
+        });
+
+        // Step 9: Return response
+        res.json({
+            success: true,
+            products: transformProducts(enrichedProducts),
+            pagination: {
+                page: result.page,
+                pages: result.pages,
+                total: result.count,
+                limit: parsedLimit
+            }
+        });
+
+    } catch (err) {
+        console.error('Error in getAllProducts:', err.message);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
