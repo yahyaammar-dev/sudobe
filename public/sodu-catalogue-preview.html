@@ -51,9 +51,6 @@
     .card-top img{width:100%;max-width:120px;height:120px;object-fit:contain}
     .card-body{padding:12px 14px}
     .pname{font-weight:900;font-size:18px;line-height:1.15;letter-spacing:-.01em}
-    .price-row{margin-top:10px;display:flex;gap:6px;align-items:baseline}
-    .price{color:var(--accent);font-weight:900}
-    .per{color:var(--muted);font-weight:900}
     .meta{margin-top:6px;color:var(--muted);font-weight:800;font-size:14px}
     .soldby{border-top:1px solid var(--line);padding:12px 14px;background:rgba(0,0,0,.02);color:var(--muted);font-weight:800}
     .loadmore{margin:18px 0;display:flex;justify-content:center}
@@ -144,7 +141,6 @@
           <option value="a-z">Sort: A–Z</option>
           <option value="lowest-moq">Lowest MOQ</option>
           <option value="shortest-lead-time">Shortest lead time</option>
-          <option value="lowest-price">Lowest price</option>
         </select>
       </div>
 
@@ -478,8 +474,6 @@
     }
     $("searchGrid").innerHTML = items.map(p => {
       const img = p.image;
-      const priceText = p.price == null ? "Price on request" : `$${fmt(p.price)}`;
-      const per = p.unitQuantity ? `/${p.unitQuantity}` : "";
       const moq = p.moq ?? "—";
       const unitLabel = p.unitLabel || "Carton";
       return `
@@ -492,10 +486,6 @@
           </div>
           <div class="card-body">
             <div class="pname">${esc(p.name)}</div>
-            <div class="price-row">
-              <div class="price">${esc(priceText)}</div>
-              <div class="per">${esc(per)}</div>
-            </div>
             <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
           </div>
           <div class="soldby">Sold by : <span style="color:rgba(0,0,0,.78)">${esc(p.soldBy || "—")}</span></div>
@@ -691,8 +681,6 @@
 
     $("grid").innerHTML = items.map(p => {
       const img = p.image;
-      const priceText = (p.price == null) ? "Price on request" : `$${fmt(p.price)}`;
-      const per = p.unitQuantity ? `/${p.unitQuantity}` : "";
       const moq = p.moq ?? "—";
       const unitLabel = p.unitLabel || "Carton";
 
@@ -707,10 +695,6 @@
           </div>
           <div class="card-body">
             <div class="pname">${esc(p.name)}</div>
-            <div class="price-row">
-              <div class="price">${esc(priceText)}</div>
-              <div class="per">${esc(per)}</div>
-            </div>
             <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
           </div>
           <div class="soldby">Sold by : <span style="color:rgba(0,0,0,.78)">${esc(p.soldBy || "—")}</span></div>
@@ -732,7 +716,6 @@
 
       const moq = details.minimum_quantity ?? details.MOQ ?? p.moq ?? "—";
       const soldBy = p.sold_by ?? details.factory_name ?? details["Factory Name"] ?? "—";
-      const priceText = (p.price == null) ? "Price on request" : `$${fmt(Number(p.price))}${p.unit_quantity ? ` /${p.unit_quantity}` : ""}`;
 
       const rows = Object.entries(details).map(([k,v]) => `
         <div class="row"><div class="k">${esc(prettyKey(k))}</div><div class="v">${esc(String(v))}</div></div>
@@ -744,7 +727,6 @@
           <div>
             <h3>${esc(name)}</h3>
             <div class="pillrow">
-              <span class="pillmini">Price: ${esc(priceText)}</span>
               <span class="pillmini">MOQ: ${esc(String(moq))}</span>
               <span class="pillmini">Sold by: ${esc(String(soldBy))}</span>
             </div>
@@ -840,8 +822,6 @@
           <div class="grid" style="margin-top:0">
             ${products.map(p => {
               const img = p.image;
-              const priceText = (p.price == null) ? "Price on request" : `$${fmt(p.price)}`;
-              const per = p.unitQuantity ? `/${p.unitQuantity}` : "";
               const moq = p.moq ?? "—";
               const unitLabel = p.unitLabel || "Carton";
               return `
@@ -853,10 +833,6 @@
                   </div>
                   <div class="card-body">
                     <div class="pname">${esc(p.name)}</div>
-                    <div class="price-row">
-                      <div class="price">${esc(priceText)}</div>
-                      <div class="per">${esc(per)}</div>
-                    </div>
                     <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
                   </div>
                 </div>
