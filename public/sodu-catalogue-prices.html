@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SODU — Catalogue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--accent:#0C8F3C;--bg:#fff;--soft:#f6f7f9;--muted:#6b7280;--line:#e5e7eb;--shadow:0 14px 40px rgba(0,0,0,.12)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
+    .topbar{position:sticky;top:0;z-index:30;background:#0b363c;border-bottom:1px solid #0b363c}
+    .topbar-inner{max-width:1040px;margin:0 auto;padding:12px 14px;display:flex;align-items:center;gap:10px}
+    .iconbtn{width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s}
+    .iconbtn:hover{transform:translateY(-1px)}
+    .titlewrap{min-width:0;flex:1}
+    .pagetitle{font-weight:900;font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+    .subtitle{font-size:12px;color:rgba(255,255,255,.65);font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pill{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:10px 12px;font-weight:900;font-size:13px;cursor:pointer}
+    .wrap{max-width:1040px;margin:0 auto;padding:14px 14px 90px}
+    .search{display:flex;align-items:center;gap:10px;background:var(--soft);border-radius:16px;padding:14px}
+    .search input{border:0;outline:0;background:transparent;width:100%;font-size:15px;color:#111}
+    .hint{margin-top:10px;color:var(--muted);font-weight:700;font-size:12px}
+    h2{margin:22px 0 12px;font-size:28px;letter-spacing:-.02em}
+    .catGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    @media (max-width:520px){.catGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .cat{background:#f3f4f6;border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;border:1px solid rgba(0,0,0,.03);transition:transform .12s,box-shadow .12s;position:relative}
+    .cat:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.08);z-index:1}
+    .catImg{height:96px;background:#e5e7eb;display:flex;align-items:center;justify-content:center}
+    .catImg img{width:100%;height:100%;object-fit:cover}
+    .catName{padding:10px 10px 12px;font-weight:900;text-align:center}
+    .brandsRow{display:flex;gap:14px;overflow:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .brandsRow::-webkit-scrollbar{display:none}
+    .brand{min-width:92px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
+    .brandLogo{width:72px;height:72px;border-radius:999px;background:#f3f4f6;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .brandLogo img{width:100%;height:100%;object-fit:contain;padding:10px}
+    .brandName{font-size:12px;font-weight:900;color:#111;text-align:center;max-width:92px}
+    .tabs{display:flex;gap:18px;overflow:auto;padding:10px 0 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid var(--line);margin-top:6px}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{border:0;background:transparent;cursor:pointer;white-space:nowrap;font-size:14px;font-weight:900;color:rgba(0,0,0,.55);padding:10px 2px;position:relative}
+    .tab.active{color:rgba(0,0,0,.92)}
+    .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:3px;border-radius:99px;background:rgba(0,0,0,.88)}
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+    .select{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 12px;font-weight:900;font-size:13px}
+    .grid{margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media (min-width:920px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}
+    .card{background:#fff;border:1px solid var(--line);border-radius:0;overflow:hidden;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative}
+    .card:hover{box-shadow:0 10px 22px rgba(0,0,0,.06);transform:translateY(-2px);z-index:1}
+    .card-top{padding:18px 14px 10px;min-height:140px;display:flex;align-items:center;justify-content:center}
+    .card-top img{width:100%;max-width:120px;height:120px;object-fit:contain}
+    .card-body{padding:12px 14px}
+    .pname{font-weight:900;font-size:18px;line-height:1.15;letter-spacing:-.01em}
+    .price{font-weight:900;font-size:17px;color:var(--accent);margin-top:6px}
+    .price-na{font-weight:700;font-size:13px;color:var(--muted);margin-top:6px}
+    .meta{margin-top:6px;color:var(--muted);font-weight:800;font-size:14px}
+    .soldby{border-top:1px solid var(--line);padding:12px 14px;background:rgba(0,0,0,.02);color:var(--muted);font-weight:800}
+    .loadmore{margin:18px 0;display:flex;justify-content:center}
+    .bottomNav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:25}
+    .bottomNavInner{max-width:1040px;margin:0 auto;display:flex;justify-content:space-around;padding:10px 0}
+    .navItem{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#6b7280;font-weight:800;cursor:pointer}
+    .navItem.active{color:var(--accent)}
+    .navIcon{width:22px;height:22px;opacity:.9}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:60}
+    .sheet{width:100%;max-width:980px;background:#fff;border-radius:18px 18px 0 0;box-shadow:var(--shadow);max-height:92vh;overflow:auto;padding:14px 14px 18px}
+    @media (min-width:900px){.overlay{align-items:center}.sheet{border-radius:18px;max-height:88vh}}
+    .sheethead{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;background:#fff;padding:6px 0 10px;border-bottom:1px solid var(--line)}
+    .sheettitle{font-weight:900}
+    .closebtn{width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:900}
+    .pdp{display:grid;grid-template-columns:220px 1fr;gap:16px;margin-top:12px}
+    @media (max-width:760px){.pdp{grid-template-columns:1fr}}
+    .pdp img{width:220px;max-width:100%;object-fit:contain}
+    .pdp h3{margin:0;font-size:20px;letter-spacing:-.01em}
+    .pdp-price{font-size:22px;font-weight:900;color:var(--accent);margin:8px 0 0}
+    .pdp p{margin:8px 0 0;color:var(--muted);font-weight:700;line-height:1.45}
+    .pillrow{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .pillmini{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 10px;font-weight:900;font-size:12px;color:#111}
+    .pillmini.price-pill{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+    .btn{border:0;border-radius:999px;padding:12px 14px;font-weight:900;cursor:pointer;font-size:14px}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.secondary{background:#f3f4f6;color:#111;border:1px solid var(--line)}
+    .table{margin-top:14px;border-top:1px solid var(--line)}
+    .row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line)}
+    .k{color:var(--muted);font-weight:900}
+    .v{font-weight:900;text-align:right}
+    .empty{padding:16px;background:#fff;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-weight:700}
+    .factoryHero{position:relative;border-radius:18px;overflow:hidden;background:#f3f4f6;margin-bottom:18px}
+    .factoryHeroCover{width:100%;height:160px;object-fit:cover;display:block}
+    .factoryHeroCoverFallback{width:100%;height:160px;background:linear-gradient(135deg,#e5e7eb,#d1d5db);display:flex;align-items:center;justify-content:center}
+    .factoryHeroInfo{display:flex;align-items:flex-end;gap:14px;padding:14px}
+    .factoryLogoWrap{width:70px;height:70px;border-radius:999px;border:3px solid #fff;background:#fff;overflow:hidden;flex-shrink:0;margin-top:-44px;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+    .factoryLogoWrap img{width:100%;height:100%;object-fit:contain;padding:8px}
+    .factoryMeta{flex:1;min-width:0}
+    .factoryTitle{font-weight:900;font-size:20px;letter-spacing:-.01em}
+    .factorySubtitle{color:var(--muted);font-weight:800;font-size:13px;margin-top:2px}
+    .fcat{font-weight:900;font-size:16px;margin:18px 0 10px;letter-spacing:-.01em}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <button class="iconbtn" id="backBtn" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="titlewrap">
+        <div class="pagetitle" id="pageTitle">Home</div>
+        <div class="subtitle" id="pageSubtitle">Browse categories & factories</div>
+      </div>
+      <button class="pill" id="homeBtn" style="display:none">Home</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div id="homeView">
+      <div class="search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="opacity:.5">
+          <path d="M21 21l-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input id="homeSearch" placeholder="Search product or manufacturer" />
+      </div>
+
+      <h2>Shop by category</h2>
+      <div class="catGrid" id="catGrid"></div>
+
+      <h2>Shop by Brand</h2>
+      <div class="brandsRow" id="brandsRow"></div>
+
+      <div class="hint" id="status">Loading…</div>
+    </div>
+
+    <div id="categoryView" style="display:none">
+      <div class="tabs" id="tabs"></div>
+
+      <div class="toolbar">
+        <div class="hint" id="catHint">—</div>
+        <select class="select" id="sortSelect">
+          <option value="a-z">Sort: A–Z</option>
+          <option value="lowest-moq">Lowest MOQ</option>
+          <option value="shortest-lead-time">Shortest lead time</option>
+        </select>
+      </div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="loadmore" id="loadMoreWrap"><button class="pill" id="loadMoreBtn">Load more</button></div>
+      <div class="hint" id="loadingMore" style="display:none;text-align:center">Loading…</div>
+    </div>
+
+    <div id="factoryView" style="display:none">
+      <div class="factoryHero">
+        <div id="fCoverWrap"></div>
+        <div class="factoryHeroInfo">
+          <div class="factoryLogoWrap" id="fLogoWrap"></div>
+          <div class="factoryMeta">
+            <div class="factoryTitle" id="fName"></div>
+            <div class="factorySubtitle" id="fMeta"></div>
+          </div>
+        </div>
+      </div>
+      <div id="fBody"></div>
+    </div>
+  </div>
+
+  <div class="bottomNav">
+    <div class="bottomNavInner">
+      <div class="navItem active" id="navHome">
+        <svg class="navIcon" viewBox="0 0 24 24" fill="none"><path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-7H10v7H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Home
+      </div>
+      <div class="navItem" id="navOrders">
+        <svg class="navIcon" viewBox="0 0 24 24" fill="none"><path d="M6 7h15l-1.5 12h-13L6 7Z" stroke="currentColor" stroke-width="2"/><path d="M9 7a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="2"/></svg>
+        Orders
+      </div>
+      <div class="navItem" id="navAccount">
+        <svg class="navIcon" viewBox="0 0 24 24" fill="none"><path d="M20 21a8 8 0 1 0-16 0" stroke="currentColor" stroke-width="2"/><path d="M12 13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2"/></svg>
+        Account
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Product details">
+      <div class="sheethead">
+        <div class="sheettitle">Product details</div>
+        <button class="closebtn" id="closePdp">✕</button>
+      </div>
+      <div id="pdpBody"></div>
+    </div>
+  </div>
+
+<script>
+  const BASE_ORIGIN = "https://testdeployfornetservex.online";
+  const BASE = `${BASE_ORIGIN}/sudobe/api/catalogue`;
+
+  const API = {
+    categories: () => `${BASE}/categories`,
+    factories:  () => `${BASE}/factories`,
+    categoryDetails: (id) => `${BASE}/categoryDetails/${encodeURIComponent(id)}`,
+    byFactory: (factoryId) => `${BASE}/by-factory/${encodeURIComponent(factoryId)}/${encodeURIComponent(factoryId)}`,
+    byCategory: (id, {page, limit, sort}={}) => {
+      const url = new URL(`${BASE}/byCategory/${encodeURIComponent(id)}`);
+      if (page) url.searchParams.set("page", String(page));
+      if (limit) url.searchParams.set("limit", String(limit));
+      if (sort) url.searchParams.set("sort", String(sort));
+      return url.toString();
+    },
+    productsQuery: (categoryId, {page, limit, sort}={}) => {
+      const url = new URL(`${BASE}/products`);
+      url.searchParams.set("category", categoryId);
+      if (page) url.searchParams.set("page", String(page));
+      if (limit) url.searchParams.set("limit", String(limit));
+      if (sort) url.searchParams.set("sort", String(sort));
+      return url.toString();
+    },
+    productDetails: (id) => `${BASE}/productDetails/${encodeURIComponent(id)}`
+  };
+
+  const $ = (id)=>document.getElementById(id);
+
+  const state = {
+    view: "home",
+    categories: [],
+    factories: [],
+    activeCategoryId: null,
+    activeCategoryName: "",
+    subcategories: [],
+    activeTabId: "parent",
+    sort: "a-z",
+    page: 1,
+    limit: 24,
+    total: null,
+    loading: false,
+    products: [],
+    homeQuery: "",
+    epoch: 0,
+    fetchController: null
+  };
+
+  init();
+
+  async function init(){
+    wireUI();
+    await loadHome();
+    renderHome();
+  }
+
+  function wireUI(){
+    $("backBtn").onclick = () => {
+      if (state.view === "category") goHome();
+      else if (state.view === "factory") goHome();
+    };
+    $("homeBtn").onclick = goHome;
+    $("navHome").onclick = goHome;
+
+    $("navOrders").onclick = () => alert("Orders (placeholder)");
+    $("navAccount").onclick = () => alert("Account (placeholder)");
+
+    $("homeSearch").addEventListener("input", (e) => {
+      state.homeQuery = (e.target.value || "").trim().toLowerCase();
+      renderHome();
+    });
+
+    $("catGrid").onclick = (e) => {
+      const el = e.target.closest("[data-cat-id]");
+      if (!el) return;
+      openCategory(el.dataset.catId, el.dataset.catName);
+    };
+
+    $("brandsRow").onclick = (e) => {
+      const el = e.target.closest("[data-factory-id]");
+      if (!el) return;
+      openFactory(el.dataset.factoryId, el.dataset.factoryName);
+    };
+
+    $("tabs").onclick = (e) => {
+      const btn = e.target.closest("[data-tab-id]");
+      if (!btn || btn.dataset.tabId === state.activeTabId) return;
+      abortPending();
+      state.epoch++;
+      state.activeTabId = btn.dataset.tabId;
+      state.page = 1;
+      state.products = [];
+      $("tabs").querySelectorAll("[data-tab-id]").forEach(t =>
+        t.classList.toggle("active", t.dataset.tabId === state.activeTabId)
+      );
+      loadCategoryProducts(true);
+    };
+
+    $("sortSelect").addEventListener("change", () => {
+      abortPending();
+      state.epoch++;
+      state.sort = $("sortSelect").value;
+      state.page = 1;
+      state.products = [];
+      loadCategoryProducts(true);
+    });
+
+    $("loadMoreBtn").onclick = () => {
+      if (state.loading) return;
+      state.page += 1;
+      loadCategoryProducts(false);
+    };
+
+    $("closePdp").onclick = closePdp;
+    $("overlay").onclick = (e) => { if (e.target.id === "overlay") closePdp(); };
+
+    $("grid").onclick = (e) => {
+      const card = e.target.closest("[data-product-id]");
+      if (!card) return;
+      openPdp(card.dataset.productId);
+    };
+  }
+
+  async function loadHome(){
+    $("status").textContent = "Loading…";
+    try{
+      const [catRes, facRes] = await Promise.all([
+        fetchJson(API.categories()),
+        fetchJson(API.factories())
+      ]);
+      if (!catRes?.success) throw new Error("categories failed");
+      if (!facRes?.success) throw new Error("factories failed");
+
+      state.categories = Array.isArray(catRes.categories) ? catRes.categories : [];
+      state.factories  = Array.isArray(facRes.data) ? facRes.data : [];
+
+      $("status").textContent = `Loaded ${state.categories.length} categories · ${state.factories.length} brands`;
+    } catch(err){
+      console.error(err);
+      $("status").textContent = "Could not load (CORS or network). Serve from your backend domain/proxy.";
+      $("catGrid").innerHTML = `<div class="empty">Home data failed to load. Check CORS or API base.</div>`;
+    }
+  }
+
+  function renderHome(){
+    setHeader("Home", "Browse categories & factories", {showHomeBtn:false});
+
+    const q = state.homeQuery;
+
+    const cats = state.categories
+      .map(normalizeCategory)
+      .filter(c => c.id)
+      .filter(c => !q || c.name.toLowerCase().includes(q))
+      .slice(0, 24);
+
+    $("catGrid").innerHTML = cats.map(c => `
+      <div class="cat" data-cat-id="${escAttr(c.id)}" data-cat-name="${escAttr(c.name)}">
+        <div class="catImg">
+          ${c.image
+            ? `<img src="${escAttr(c.image)}" alt="${escAttr(c.name)}"
+                 onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div style=\'color:var(--muted);font-weight:900\'>No image</div>';">`
+            : `<div style="color:var(--muted);font-weight:900">No image</div>`
+          }
+        </div>
+        <div class="catName">${esc(c.name)}</div>
+      </div>
+    `).join("");
+
+    if (!cats.length){
+      $("catGrid").innerHTML = `<div class="empty">No categories match your search.</div>`;
+    }
+
+    const facs = state.factories
+      .map(normalizeFactory)
+      .filter(f => f.id)
+      .filter(f => !q || f.name.toLowerCase().includes(q))
+      .slice(0, 30);
+
+    $("brandsRow").innerHTML = facs.map(f => `
+      <div class="brand" data-factory-id="${escAttr(f.id)}" data-factory-name="${escAttr(f.name)}">
+        <div class="brandLogo">
+          ${f.logo
+            ? `<img src="${escAttr(f.logo)}" alt="${escAttr(f.name)}"
+                 onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div style=\'color:#999;font-weight:900\'>Logo</div>';">`
+            : `<div style="font-weight:900;color:#999">Logo</div>`
+          }
+        </div>
+        <div class="brandName">${esc(f.name)}</div>
+      </div>
+    `).join("");
+
+    $("homeView").style.display = "";
+    $("categoryView").style.display = "none";
+    $("factoryView").style.display = "none";
+    state.view = "home";
+  }
+
+  async function openCategory(categoryId, categoryName){
+    const signal = abortPending();
+    state.epoch++;
+    const myEpoch = state.epoch;
+
+    state.activeCategoryId = categoryId;
+    state.activeCategoryName = categoryName || "Category";
+    state.page = 1;
+    state.products = [];
+    state.total = null;
+    state.subcategories = [];
+    state.activeTabId = "parent";
+
+    try{
+      const details = await fetchJson(API.categoryDetails(categoryId), signal);
+      if (state.epoch !== myEpoch) return;
+      if (!details?.success) throw new Error("categoryDetails failed");
+
+      state.subcategories = Array.isArray(details.subcategories) ? details.subcategories : [];
+
+      if (state.subcategories.length) {
+        const first = state.subcategories[0];
+        state.activeTabId = String(first.id || first._id || first.category_id);
+      }
+
+      setHeader(state.activeCategoryName, "Browse products", {showHomeBtn:true});
+      $("homeView").style.display = "none";
+      $("categoryView").style.display = "";
+      state.view = "category";
+
+      renderTabs();
+
+      $("grid").innerHTML = `<div class="empty">Loading products…</div>`;
+
+      await loadCategoryProducts(true);
+    } catch(err){
+      console.error(err);
+      alert("Could not open category (CORS/network).");
+    }
+  }
+
+  function renderTabs(){
+    const tabs = [
+      ...state.subcategories.map(s => ({
+        id: String(s.id || s._id || s.category_id),
+        name: s.name || s.title || "Subcategory"
+      })).filter(t => t.id && t.id !== "undefined")
+    ];
+
+    $("tabs").innerHTML = tabs.map(t => `
+      <button class="tab ${t.id===state.activeTabId ? "active":""}" data-tab-id="${escAttr(t.id)}">${esc(t.name)}</button>
+    `).join("");
+
+    $("sortSelect").value = state.sort;
+  }
+
+  async function loadCategoryProducts(reset){
+    if (state.loading) return;
+    state.loading = true;
+    const myEpoch = state.epoch;
+    const signal = state.fetchController ? state.fetchController.signal : undefined;
+
+    $("loadingMore").style.display = "";
+    $("loadMoreBtn").disabled = true;
+
+    try{
+      const isAll = !state.activeTabId || state.activeTabId === "parent";
+      const url = API.byCategory(
+        isAll ? state.activeCategoryId : state.activeTabId,
+        { page: state.page, limit: state.limit, sort: state.sort }
+      );
+
+      const res = await fetchJson(url, signal);
+      if (state.epoch !== myEpoch) return;
+      if (!res?.success) throw new Error("listing failed");
+
+      const items = Array.isArray(res.products) ? res.products.map(normalizeProduct) : [];
+      state.total = (typeof res.total === "number") ? res.total : state.total;
+
+      if (reset) state.products = items;
+      else state.products = [...state.products, ...items];
+
+      const shown = state.products.length;
+      const total = state.total;
+
+      if (total != null) {
+        $("catHint").textContent = `${shown} of ${total} products`;
+        $("loadMoreWrap").style.display = (shown < total) ? "" : "none";
+      } else {
+        $("catHint").textContent = `${shown} products`;
+        $("loadMoreWrap").style.display = items.length < state.limit ? "none" : "";
+      }
+
+      renderProducts();
+    } catch(err){
+      if (err.name === "AbortError") return;
+      console.error(err);
+      if (state.epoch === myEpoch) {
+        $("grid").innerHTML = `<div class="empty">Could not load products. Check API / CORS.</div>`;
+      }
+    } finally {
+      if (state.epoch === myEpoch) {
+        state.loading = false;
+        $("loadingMore").style.display = "none";
+        $("loadMoreBtn").disabled = false;
+      }
+    }
+  }
+
+  function renderProducts(){
+    const items = state.products;
+
+    if (!items.length){
+      $("grid").innerHTML = `<div class="empty">No products found in this category.</div>`;
+      return;
+    }
+
+    $("grid").innerHTML = items.map(p => {
+      const img = p.image;
+      const moq = p.moq ?? "—";
+      const unitLabel = p.unitLabel || "Carton";
+
+      return `
+        <div class="card" data-product-id="${escAttr(p.id)}">
+          <div class="card-top">
+            ${img
+              ? `<img src="${escAttr(img)}" alt="${escAttr(p.name)}"
+                   onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div style=\'color:var(--muted);font-weight:900\'>No image</div>';">`
+              : `<div style="color:var(--muted);font-weight:900">No image</div>`
+            }
+          </div>
+          <div class="card-body">
+            <div class="pname">${esc(p.name)}</div>
+            ${p.price != null
+              ? `<div class="price">$${fmt(p.price)}</div>`
+              : `<div class="price-na">Price on request</div>`
+            }
+            <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
+          </div>
+          <div class="soldby">Sold by : <span style="color:rgba(0,0,0,.78)">${esc(p.soldBy || "—")}</span></div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function openPdp(productId){
+    try{
+      const res = await fetchJson(API.productDetails(productId));
+      if (!res?.success) throw new Error("productDetails failed");
+      const p = res.product || {};
+
+      const name = p.name || "Product";
+      const desc = p.description || "";
+      const image = pickImage(p);
+      const details = p.product_details || p.content || {};
+
+      const moq = details.minimum_quantity ?? details.MOQ ?? p.moq ?? "—";
+      const soldBy = p.sold_by ?? details.factory_name ?? details["Factory Name"] ?? "—";
+      const price = p.price != null ? Number(p.price) : null;
+
+      const rows = Object.entries(details).map(([k,v]) => `
+        <div class="row"><div class="k">${esc(prettyKey(k))}</div><div class="v">${esc(String(v))}</div></div>
+      `).join("");
+
+      $("pdpBody").innerHTML = `
+        <div class="pdp">
+          <div>${image ? `<img src="${escAttr(image)}" alt="${escAttr(name)}" onerror="this.onerror=null;this.style.display='none';">` : ``}</div>
+          <div>
+            <h3>${esc(name)}</h3>
+            ${price != null
+              ? `<div class="pdp-price">$${fmt(price)}</div>`
+              : `<div style="font-weight:700;font-size:14px;color:var(--muted);margin-top:6px">Price on request</div>`
+            }
+            <div class="pillrow">
+              <span class="pillmini">MOQ: ${esc(String(moq))}</span>
+              <span class="pillmini">Sold by: ${esc(String(soldBy))}</span>
+            </div>
+            ${desc ? `<p>${esc(desc)}</p>` : ""}
+            <div class="actions">
+              <button class="btn secondary" id="copyNameBtn">Copy name</button>
+              <button class="btn primary" id="inquiryBtn" style="background:#25D366;display:flex;align-items:center;gap:8px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="table">${rows || `<div class="row"><div class="k">Details</div><div class="v">—</div></div>`}</div>
+      `;
+
+      $("copyNameBtn").onclick = () => navigator.clipboard.writeText(name);
+      $("inquiryBtn").onclick = () => {
+        const msg = encodeURIComponent(`Hi, I'm interested in: ${name}`);
+        window.open(`https://wa.me/15557796106?text=${msg}`, "_blank");
+      };
+
+      $("overlay").style.display = "flex";
+      $("overlay").setAttribute("aria-hidden","false");
+    } catch(err){
+      console.error(err);
+      alert("Could not load product details.");
+    }
+  }
+
+  function closePdp(){
+    $("overlay").style.display = "none";
+    $("overlay").setAttribute("aria-hidden","true");
+    $("pdpBody").innerHTML = "";
+  }
+
+  async function openFactory(factoryId, factoryName){
+    setHeader(factoryName || "Brand", "Loading…", {showHomeBtn:true});
+    $("homeView").style.display = "none";
+    $("categoryView").style.display = "none";
+    $("factoryView").style.display = "";
+    state.view = "factory";
+
+    $("fName").textContent = factoryName || "Brand";
+    $("fMeta").textContent = "Loading products…";
+    $("fCoverWrap").innerHTML = `<div class="factoryHeroCoverFallback"></div>`;
+    $("fLogoWrap").innerHTML = "";
+    $("fBody").innerHTML = `<div class="hint" style="text-align:center;padding:24px">Loading…</div>`;
+
+    try {
+      const res = await fetchJson(API.byFactory(factoryId));
+      if (!res?.success) throw new Error("byFactory failed");
+
+      const factory = res.factory || {};
+      const grouped = res.groupedProducts || {};
+
+      const coverUrl = resolveImageUrl(factory.content?.store_front_cover_photo?.url || factory.content?.store_front_cover_photo?.file?.url);
+      const logoUrl  = resolveImageUrl(factory.content?.store_front_logo?.url || factory.content?.store_front_logo?.file?.url);
+      const name = factory.content?.factory_name || factory.name || factoryName || "Brand";
+      const country = factory.content?.country || "";
+      const city = factory.content?.city || "";
+      const location = [city, country].filter(Boolean).join(", ");
+
+      $("fCoverWrap").innerHTML = coverUrl
+        ? `<img class="factoryHeroCover" src="${escAttr(coverUrl)}" alt="${escAttr(name)}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\'factoryHeroCoverFallback\'></div>';">`
+        : `<div class="factoryHeroCoverFallback"></div>`;
+
+      $("fLogoWrap").innerHTML = logoUrl
+        ? `<img src="${escAttr(logoUrl)}" alt="${escAttr(name)}" onerror="this.onerror=null;this.style.display='none';">`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#999;font-size:11px">Logo</div>`;
+
+      $("fName").textContent = name;
+      setHeader(name, location || "Brand products", {showHomeBtn:true});
+      $("fMeta").textContent = location || "";
+
+      const categories = Object.keys(grouped);
+      if (!categories.length) {
+        $("fBody").innerHTML = `<div class="empty">No products found for this brand.</div>`;
+        return;
+      }
+
+      const totalProducts = categories.reduce((sum, cat) => sum + (grouped[cat]?.length || 0), 0);
+      $("fMeta").textContent = `${totalProducts} product${totalProducts !== 1 ? "s" : ""}${location ? " · " + location : ""}`;
+
+      $("fBody").innerHTML = categories.map(cat => {
+        const products = (grouped[cat] || []).map(normalizeProduct);
+        return `
+          <div class="fcat">${esc(cat)}</div>
+          <div class="grid" style="margin-top:0">
+            ${products.map(p => {
+              const img = p.image;
+              const moq = p.moq ?? "—";
+              const unitLabel = p.unitLabel || "Carton";
+              return `
+                <div class="card" data-product-id="${escAttr(p.id)}">
+                  <div class="card-top">
+                    ${img
+                      ? `<img src="${escAttr(img)}" alt="${escAttr(p.name)}" onerror="this.onerror=null;this.style.display='none';this.parentElement.innerHTML='<div style=\'color:var(--muted);font-weight:900\'>No image</div>';">`
+                      : `<div style="color:var(--muted);font-weight:900">No image</div>`}
+                  </div>
+                  <div class="card-body">
+                    <div class="pname">${esc(p.name)}</div>
+                    ${p.price != null
+                      ? `<div class="price">$${fmt(p.price)}</div>`
+                      : `<div class="price-na">Price on request</div>`
+                    }
+                    <div class="meta">MOQ : ${esc(String(moq))} ${esc(unitLabel)}</div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        `;
+      }).join("");
+
+      $("fBody").onclick = (e) => {
+        const card = e.target.closest("[data-product-id]");
+        if (!card) return;
+        openPdp(card.dataset.productId);
+      };
+
+    } catch(err) {
+      console.error(err);
+      $("fBody").innerHTML = `<div class="empty">Could not load brand products. Check API / CORS.</div>`;
+    }
+  }
+
+  function goHome(){ abortPending(); state.epoch++; renderHome(); }
+
+  function setHeader(title, subtitle, {showHomeBtn}){
+    $("pageTitle").textContent = title;
+    $("pageSubtitle").textContent = subtitle;
+    $("homeBtn").style.display = showHomeBtn ? "" : "none";
+  }
+
+  async function fetchJson(url, signal){
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), 15000);
+    const combined = signal ? new AbortController() : timeout;
+    let unifiedSignal = timeout.signal;
+    if (signal) {
+      signal.addEventListener("abort", () => combined.abort(), { once: true });
+      timeout.signal.addEventListener("abort", () => combined.abort(), { once: true });
+      unifiedSignal = combined.signal;
+    }
+    try {
+      const res = await fetch(url, { headers: { Accept: "application/json" }, signal: unifiedSignal });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function abortPending(){
+    if (state.fetchController) state.fetchController.abort();
+    state.fetchController = new AbortController();
+    state.loading = false;
+    return state.fetchController.signal;
+  }
+
+  function resolveImageUrl(u){
+    if (!u) return null;
+    if (typeof u === "object") u = u.url || u.src || u.path || u.file?.url || null;
+    if (!u) return null;
+    const s = String(u).trim();
+    if (!s || s === "[object Object]") return null;
+    if (s.startsWith("data:")) return s;
+    if (s.startsWith("/")) return new URL(s, BASE_ORIGIN).toString();
+    return s;
+  }
+
+  function pickImage(obj){
+    const imgs = obj?.images;
+    if (Array.isArray(imgs) && imgs.length){
+      const first = imgs[0];
+      if (typeof first === "string") return resolveImageUrl(first);
+      if (typeof first === "object" && first) return resolveImageUrl(first);
+    }
+    return resolveImageUrl(obj?.image || obj?.thumbnail || obj?.photo);
+  }
+
+  function normalizeCategory(c){
+    const id = String(c.id || c._id || c.category_id || c.slug || "");
+    const name = c.name || c.title || "Category";
+    const image =
+      resolveImageUrl(c.image) ||
+      resolveImageUrl(c.thumbnail) ||
+      resolveImageUrl(c.cover) ||
+      (Array.isArray(c.images) ? resolveImageUrl((c.images[0]||{}).url || c.images[0]) : null);
+    return { id, name, image };
+  }
+
+  function normalizeFactory(f){
+    const id = String(f.id || f._id || f.factory_id || f.slug || "");
+    const name = f.content?.factory_name || f.name || f.title || "Factory";
+    const logo =
+      resolveImageUrl(f.content?.store_front_logo?.url || f.content?.store_front_logo?.file?.url) ||
+      resolveImageUrl(f.content?.store_front_cover_photo?.url || f.content?.store_front_cover_photo?.file?.url) ||
+      resolveImageUrl(f.logo) ||
+      resolveImageUrl(f.image) ||
+      resolveImageUrl(f.avatar) ||
+      (Array.isArray(f.images) ? resolveImageUrl((f.images[0]||{}).url || f.images[0]) : null);
+    return { id, name, logo };
+  }
+
+  function normalizeProduct(p){
+    const details = p.product_details || p.content || {};
+    return {
+      id: String(p.id || p._id || p.product_id),
+      name: p.name || details.main_upc || "Untitled",
+      image: pickImage(p),
+      price: (p.price == null ? null : Number(p.price)),
+      unitQuantity: p.unit_quantity ?? details.unit_quantity ?? null,
+      unitLabel: p.unit_quantity_fr ?? details.unit_quantity_fr ?? "Carton",
+      moq: p.moq ?? details.minimum_quantity ?? details.MOQ ?? null,
+      soldBy: p.sold_by ?? details.factory_name ?? details["Factory Name"] ?? "—"
+    };
+  }
+
+  function fmt(n){ return new Intl.NumberFormat(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}).format(n); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escAttr(s){ return esc(s).replace(/`/g,"&#96;"); }
+  function prettyKey(k){ return String(k).replace(/_/g," ").replace(/\b\w/g, m => m.toUpperCase()); }
+</script>
+</body>
+</html>
