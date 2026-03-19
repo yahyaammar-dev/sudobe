@@ -9,6 +9,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 const axios = require('axios');
 const ActivityLogger = require('../services/activityLogger');
 
+// Platform Fee product ID in Swell catalog (real product with variable_price enabled)
+const PLATFORM_FEE_PRODUCT_ID = '69bbac73c1b9360012315ccf';
+
 /**
  * Maps phone country codes to ISO 2-letter country codes
  * Common phone country codes to ISO country codes mapping
@@ -1085,8 +1088,9 @@ exports.testCustomPrice = async (req, res) => {
         const regularItems = [];
         
         existingItems.forEach(item => {
-            const isPlatformFee = 
-                (item.description === "Platform Fee (2.5%)" || 
+            const isPlatformFee =
+                (item.product_id === PLATFORM_FEE_PRODUCT_ID ||
+                 item.description === "Platform Fee (2.5%)" ||
                  item.name === "Platform Fee (2.5%)" ||
                  (item.type === "custom" && item.name && item.name.includes("Platform Fee")) ||
                  (item.type === "custom" && item.description && item.description.includes("Platform Fee")));
@@ -1171,14 +1175,12 @@ exports.testCustomPrice = async (req, res) => {
         const currentItems = cartAfterDeletion.items || [];
         console.log('[TEST CUSTOM PRICE] Cart items after deletion:', currentItems.length);
 
-        // Step 7: Try to add custom price object
-        // Swell requires either product_id or description, so we use description for custom items
+        // Step 7: Add platform fee as a real product (references the "Platform Fee (2.5%)" product in Swell)
         const customPriceItem = {
-            description: "Platform Fee (2.5%)",
+            product_id: PLATFORM_FEE_PRODUCT_ID,
             quantity: 1,
             price: roundedPlatformFee,
-            name: "Platform Fee (2.5%)",
-            type: "custom"
+            description: "Platform Fee (2.5%)"
         };
 
         console.log('[TEST CUSTOM PRICE] Attempting to add custom price item:', customPriceItem);
@@ -1216,8 +1218,9 @@ exports.testCustomPrice = async (req, res) => {
             })) || [], null, 2));
             
             // Verify no duplicate platform fees exist
-            const platformFeeCount = (updatedCart.items || []).filter(item => 
-                item.description === "Platform Fee (2.5%)" || 
+            const platformFeeCount = (updatedCart.items || []).filter(item =>
+                item.product_id === PLATFORM_FEE_PRODUCT_ID ||
+                item.description === "Platform Fee (2.5%)" ||
                 item.name === "Platform Fee (2.5%)" ||
                 (item.type === "custom" && item.name && item.name.includes("Platform Fee")) ||
                 (item.type === "custom" && item.description && item.description.includes("Platform Fee"))
