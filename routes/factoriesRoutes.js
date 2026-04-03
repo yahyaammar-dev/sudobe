@@ -47,9 +47,34 @@ router.get('/api', async (req, res) => {
       limit: 1000
     });
 
+    const factoryList = factories.results || [];
+
+    // Build a map of factoryId -> most recent product date_updated
+    try {
+      const products = await swell.get('/products', {
+        limit: 1000,
+        fields: 'id,content,date_updated'
+      });
+      const priceMap = {};
+      for (const product of (products.results || [])) {
+        const fid = product.content?.factory_id;
+        if (!fid) continue;
+        const ts = product.date_updated;
+        if (!ts) continue;
+        if (!priceMap[fid] || ts > priceMap[fid]) {
+          priceMap[fid] = ts;
+        }
+      }
+      for (const factory of factoryList) {
+        factory.price_last_updated = priceMap[factory.id] || null;
+      }
+    } catch (productError) {
+      console.error('Error fetching products for price_last_updated:', productError);
+    }
+
     res.json({
       success: true,
-      data: factories.results || []
+      data: factoryList
     });
   } catch (error) {
     console.error('Error fetching factories:', error);

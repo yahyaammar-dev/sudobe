@@ -425,11 +425,14 @@ router.post('/register-user', async (req, res) => {
     };
 
     // --- CASE 1: User already exists ---
+    const swellPublicKey = process.env.SWELL_PUBLIC_KEY || 'pk_lhTK2kZ913rmXFqsa8Tg8o0slpLrVNVx';
+
     if (existingUser.count > 0) {
       const user = existingUser.results[0];
 
-      // Update user OTP in Swell
+      // Update user OTP and ensure native password is set for Swell storefront login
       await swell.put(`/accounts/${user.id}`, {
+        password: swellPublicKey,
         content: {
           ...user.content,
           otp
@@ -453,15 +456,13 @@ router.post('/register-user', async (req, res) => {
     }
 
     // --- CASE 2: Register new user ---
-    const hashedPassword = await bcrypt.hash('pk_lhTK2kZ913rmXFqsa8Tg8o0slpLrVNVx', 10);
-
     const user = await swell.post('/accounts', {
       email,
       first_name: fullName,
       last_name: '',
       phone,
+      password: swellPublicKey,
       content: {
-        password: hashedPassword,
         role: 'buyer',
         verified: false,
         company_name: companyName,
