@@ -1376,6 +1376,8 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             // Preserve existing value
             productData.content.price_last_updated = existingProduct.content?.price_last_updated || null;
           }
+          // Always keep last_known_price in sync so the webhook can detect future changes
+          productData.content.last_known_price = newPrice;
 
           // Update existing product
           try {
@@ -1407,6 +1409,7 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
 
           // New products always get a price_last_updated timestamp
           productData.content.price_last_updated = new Date().toISOString();
+          productData.content.last_known_price = parseFloat(mainRow.Price) || 0;
 
           // Create new product
           try {
