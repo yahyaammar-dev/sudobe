@@ -64,7 +64,7 @@
       </small>
     </div>
 
-    <form method="POST" action="/sudobe/api/auth/verify-otp" id="otpForm">
+    <form method="POST" action="#" data-base-path="/api/auth/verify-otp" id="otpForm">
       <input type="hidden" name="userId" id="userId" />
       
       <div class="mb-3">
@@ -108,6 +108,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="config.js"></script>
   <script>
     // Get URL parameters
     const params = new URLSearchParams(window.location.search);
@@ -161,6 +162,8 @@
     const countdownElement = document.getElementById('countdown');
     const verifyBtn = document.getElementById('verifyBtn');
     const otpForm = document.getElementById('otpForm');
+    // Set form action using BASE_PATH
+    otpForm.action = (window.BASE_PATH || '') + otpForm.getAttribute('data-base-path');
 
     const otpCountdownTimer = setInterval(() => {
       const minutes = Math.floor(otpTimeLeft / 60);
@@ -209,7 +212,7 @@
       this.innerHTML = 'Sending...';
       
       try {
-        const response = await fetch('/sudobe/api/auth/resend-otp', {
+        const response = await fetch(`${window.BASE_PATH}/api/auth/resend-otp`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

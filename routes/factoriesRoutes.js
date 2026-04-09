@@ -59,7 +59,7 @@ router.get('/api', async (req, res) => {
       for (const product of (products.results || [])) {
         const fid = product.content?.factory_id;
         if (!fid) continue;
-        const ts = product.date_updated;
+        const ts = product.content?.price_last_updated;
         if (!ts) continue;
         if (!priceMap[fid] || ts > priceMap[fid]) {
           priceMap[fid] = ts;
@@ -67,6 +67,7 @@ router.get('/api', async (req, res) => {
       }
       for (const factory of factoryList) {
         factory.price_last_updated = priceMap[factory.id] || null;
+        factory.price_sidenote = factory.content?.price_sidenote || '';
       }
     } catch (productError) {
       console.error('Error fetching products for price_last_updated:', productError);
@@ -422,6 +423,27 @@ router.put('/api/:id', upload.fields([
       message: 'Failed to update factory',
       error: error.message
     });
+  }
+});
+
+// Update factory price sidenote
+router.patch('/api/:id/sidenote', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { price_sidenote } = req.body;
+
+    const existingFactory = await swell.get(`/accounts/${id}`);
+    await swell.put(`/accounts/${id}`, {
+      content: {
+        ...(existingFactory?.content || {}),
+        price_sidenote: price_sidenote || ''
+      }
+    });
+
+    res.json({ success: true, message: 'Sidenote updated successfully' });
+  } catch (error) {
+    console.error('Error updating sidenote:', error);
+    res.status(500).json({ success: false, message: 'Failed to update sidenote' });
   }
 });
 

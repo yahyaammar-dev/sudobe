@@ -74,7 +74,7 @@
     <div class="security-info">
    
     
-    <form method="POST" action="/sudobe/api/auth/login" id="loginForm">
+    <form method="POST" action="#" data-base-path="/api/auth/login" id="loginForm">
       <div class="mb-3">
         <label for="email" class="form-label">Email address</label>
         <input 
@@ -118,6 +118,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="config.js"></script>
   <script>
     // Handle URL parameters for status messages
     const params = new URLSearchParams(window.location.search);
@@ -144,11 +145,13 @@
     const loadingText = loginBtn.querySelector('.loading');
 
     loginForm.addEventListener('submit', function(e) {
+      // Set form action using BASE_PATH
+      loginForm.action = (window.BASE_PATH || '') + loginForm.getAttribute('data-base-path');
       // Show loading state
       loginBtn.disabled = true;
       btnText.style.display = 'none';
       loadingText.style.display = 'inline';
-      
+
       // Form will submit normally, no need to prevent default
     });
 
@@ -219,7 +222,7 @@
     <div id="alert-container"></div>
 
     <h2 class="mb-4 text-center">Login</h2>
-    <form method="POST" action="/sudobe/api/auth/login">
+    <form method="POST" action="#" data-base-path="/api/auth/login">
       <div class="mb-3">
         <label for="email" class="form-label">Email address</label>
         <input type="email" name="email" class="form-control" id="email" required />

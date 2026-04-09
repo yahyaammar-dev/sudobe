@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === Banner Functions ===
   function loadBannerList() {
-    fetch('/sudobe/api/content/banners')
+    fetch(`${window.BASE_PATH}/api/content/banners`))
       .then(res => res.json())
       .then(banners => {
         let html = `
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isEdit = editData !== null;
     const title = isEdit ? 'Edit Banner' : 'Create New Banner';
     const submitText = isEdit ? 'Save Banner' : 'Create Banner';
-    const formAction = isEdit ? `/sudobe/api/content/banners/${editData.id}` : '/sudobe/api/content';
+    const formAction = isEdit ? `${window.BASE_PATH}/api/content/banners/${editData.id}` : `${window.BASE_PATH}/api/content`;
     const method = isEdit ? 'PUT' : 'POST';
 
     formContainer.innerHTML = `
@@ -157,12 +157,12 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         let response;
         if (isEdit) {
-          response = await fetch(`/sudobe/api/content/banners/${editData.id}`, {
+          response = await fetch(`${window.BASE_PATH}/api/content/banners/${editData.id}`, {
             method: 'PUT',
             body: formData
           });
         } else {
-          response = await fetch('/sudobe/api/content', {
+          response = await fetch(`${window.BASE_PATH}/api/content`), {
             method: 'POST',
             body: formData
           });
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadBannerEditForm(bannerId) {
-    fetch(`/sudobe/api/content/banners`)
+    fetch(`${window.BASE_PATH}/api/content/banners`)
       .then(res => res.json())
       .then(banners => {
         const banner = banners.find(b => b.id === bannerId);
@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         let html = '';
         if (type === 'category') {
-          const res = await fetch('/sudobe/api/content/categories');
+          const res = await fetch(`${window.BASE_PATH}/api/content/categories`));
           const categories = await res.json();
           html += `<label class="form-label">Select Category</label>
                    <select name="bannerValue" class="form-select" required>`;
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           html += `</select>`;
         } else if (type === 'factory') {
-          const res = await fetch('/sudobe/api/content/factories');
+          const res = await fetch(`${window.BASE_PATH}/api/content/factories`));
           const factories = await res.json();
           html += `<label class="form-label">Select Factory</label>
                    <select name="bannerValue" class="form-select" required>`;
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        const res = await fetch(`/sudobe/api/content/products?search=${encodeURIComponent(term)}`);
+        const res = await fetch(`${window.BASE_PATH}/api/content/products?search=${encodeURIComponent(term)}`);
         const products = await res.json();
 
         autocomplete.innerHTML = '';
@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === Protection Functions ===
   function loadProtectionList() {
-    fetch('/sudobe/api/content/protections')
+    fetch(`${window.BASE_PATH}/api/content/protections`))
       .then(res => res.json())
       .then(protections => {
         let html = `
@@ -427,12 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         let response;
         if (isEdit) {
-          response = await fetch(`/sudobe/api/content/protections/${editData.id}`, {
+          response = await fetch(`${window.BASE_PATH}/api/content/protections/${editData.id}`, {
             method: 'PUT',
             body: formData
           });
         } else {
-          response = await fetch('/sudobe/api/content/protection', {
+          response = await fetch(`${window.BASE_PATH}/api/content/protection`), {
             method: 'POST',
             body: formData
           });
@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadProtectionEditForm(protectionId) {
-    fetch(`/sudobe/api/content/protections`)
+    fetch(`${window.BASE_PATH}/api/content/protections`)
       .then(res => res.json())
       .then(protections => {
         const protection = protections.find(p => p.id === protectionId);
@@ -474,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <h2>Banking Details</h2>
       <div class="card">
         <div class="card-body">
-          <form action="/sudobe/api/content/banking" method="POST">
+          <form action="#" data-base-path="/api/content/banking" method="POST">
             <div class="mb-3">
               <label class="form-label">Account Number</label>
               <input type="text" name="accountNumber" class="form-control" required />
@@ -504,6 +504,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
     `;
+    // Fix form action with BASE_PATH
+    const bankingForm = formContainer.querySelector('form[data-base-path]');
+    if (bankingForm) bankingForm.action = window.BASE_PATH + bankingForm.getAttribute('data-base-path');
   }
 
   // === Global Functions (attached to window for onclick handlers) ===
@@ -514,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteBanner = function(id) {
     if (!confirm('Are you sure you want to delete this banner?')) return;
     
-    fetch(`/sudobe/api/content/banners/${id}`, { method: 'DELETE' })
+    fetch(`${window.BASE_PATH}/api/content/banners/${id}`, { method: 'DELETE' })
       .then(response => {
         if (response.ok) {
           loadBannerList();
@@ -536,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteProtection = function(id) {
     if (!confirm('Are you sure you want to delete this protection?')) return;
     
-    fetch(`/sudobe/api/content/protections/${id}`, { method: 'DELETE' })
+    fetch(`${window.BASE_PATH}/api/content/protections/${id}`, { method: 'DELETE' })
       .then(response => {
         if (response.ok) {
           loadProtectionList();

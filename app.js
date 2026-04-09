@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const app = express();
+const BASE_PATH = process.env.BASE_PATH || '';
 
 // Middleware
 app.use(cors());
@@ -18,6 +19,12 @@ app.use((req, res, next) => {
   next();
 });
 
+
+// Serve dynamic config.js (matched at any path depth, e.g. /config.js, /api/config.js)
+app.get(/\/config\.js$/, (req, res) => {
+  res.type('js');
+  res.send(`window.BASE_PATH = '${BASE_PATH}';`);
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -92,7 +99,7 @@ app.use('/permissions', verifyToken, require('./routes/permissionsRoutes').route
 
 // Default route
 app.get('/', (req, res) => {
-  return res.redirect('/api/content/');
+  return res.redirect(`${BASE_PATH}/api/content/`);
 });
 
 module.exports = app;

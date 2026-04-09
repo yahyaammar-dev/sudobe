@@ -465,15 +465,15 @@ router.post('/', upload.single('bannerImage'), async (req, res) => {
         req
       });
 
-      return res.redirect('/sudobe/api/content?status=success&message=Banner created successfully');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?status=success&message=Banner created successfully`);
     } catch (contentError) {
       console.error('Error creating banner content:', contentError);
-      return res.redirect('/sudobe/api/content?status=error&message=Failed to create banner');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?status=error&message=Failed to create banner`);
     }
 
   } catch (error) {
     console.error('Error processing banner submission:', error);
-    return res.redirect('/sudobe/api/content?status=error&message=Internal server error');
+    return res.redirect(`${process.env.BASE_PATH || ''}/api/content?status=error&message=Internal server error`);
   }
 });
 
@@ -512,7 +512,7 @@ router.post('/banking', async (req, res) => {
       !accountNumber || !swiftCode || !beneficiaryName ||
       !beneficiaryAddress || !beneficiaryBank || !beneficiaryBankAddress
     ) {
-      return res.redirect('/sudobe/api/content/?section=banking&status=error&message=All fields are required');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content/?section=banking&status=error&message=All fields are required`);
     }
 
     // Example: Sending to Swell or any external API
@@ -530,15 +530,15 @@ router.post('/banking', async (req, res) => {
       // Optional: Save to Swell or any other service
       const saved = await swell.post('/content/banking', bankingData);
 
-      return res.redirect('/sudobe/api/content/?section=banking&status=success&message=Banking details submitted successfully');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content/?section=banking&status=success&message=Banking details submitted successfully`);
     } catch (saveError) {
       console.error('Error saving banking details:', saveError);
-      return res.redirect('/sudobe/api/content/?section=banking&status=error&message=Failed to save banking details');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content/?section=banking&status=error&message=Failed to save banking details`);
     }
 
   } catch (err) {
     console.error('Unexpected error:', err);
-    return res.redirect('/sudobe/api/content/?section=banking&status=error&message=Internal server error');
+    return res.redirect(`${process.env.BASE_PATH || ''}/api/content/?section=banking&status=error&message=Internal server error`);
   }
 });
 
@@ -549,7 +549,7 @@ router.post('/protection', upload.single('proctectionIcon'), async (req, res) =>
     const protectionIcon = req.file;
 
     if (!title || !short_description || !long_description || !protectionIcon) {
-      return res.redirect('/sudobe/api/content?section=protection&status=error&message=All fields are required');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?section=protection&status=error&message=All fields are required`);
     }
 
     // 1. Upload the protection icon image
@@ -570,7 +570,7 @@ router.post('/protection', upload.single('proctectionIcon'), async (req, res) =>
       };
     } catch (uploadError) {
       console.error('Error uploading protection icon:', uploadError);
-      return res.redirect('/sudobe/api/content?section=protection&status=error&message=Failed to upload icon');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?section=protection&status=error&message=Failed to upload icon`);
     }
 
     // 2. Create the protection content
@@ -599,15 +599,15 @@ router.post('/protection', upload.single('proctectionIcon'), async (req, res) =>
         req
       });
 
-      return res.redirect('/sudobe/api/content?section=protection&status=success&message=Protection saved successfully');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?section=protection&status=success&message=Protection saved successfully`);
     } catch (saveError) {
       console.error('Error saving protection:', saveError);
-      return res.redirect('/sudobe/api/content?section=protection&status=error&message=Failed to save protection');
+      return res.redirect(`${process.env.BASE_PATH || ''}/api/content?section=protection&status=error&message=Failed to save protection`);
     }
 
   } catch (err) {
     console.error('Unexpected error in protection POST:', err);
-    return res.redirect('/sudobe/api/content?section=protection&status=error&message=Internal server error');
+    return res.redirect(`${process.env.BASE_PATH || ''}/api/content?section=protection&status=error&message=Internal server error`);
   }
 });
 
@@ -1367,6 +1367,16 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
           // Update productData with processed images
           productData.images = processedImages;
 
+          // Only update price_last_updated if the price actually changed
+          const newPrice = parseFloat(mainRow.Price) || 0;
+          const oldPrice = parseFloat(existingProduct.price) || 0;
+          if (Math.round(newPrice * 10000) !== Math.round(oldPrice * 10000)) {
+            productData.content.price_last_updated = new Date().toISOString();
+          } else {
+            // Preserve existing value
+            productData.content.price_last_updated = existingProduct.content?.price_last_updated || null;
+          }
+
           // Update existing product
           try {
             const updatedProduct = await swell.put(`/products/${existingProduct.id}`, productData);
@@ -1394,6 +1404,9 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
 
           // Update productData with processed images
           productData.images = processedImages;
+
+          // New products always get a price_last_updated timestamp
+          productData.content.price_last_updated = new Date().toISOString();
 
           // Create new product
           try {

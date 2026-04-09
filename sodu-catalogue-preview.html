@@ -186,9 +186,10 @@
     </div>
   </div>
 
-<script>
+<script src="config.js"></script>
+  <script>
   const BASE_ORIGIN = "https://testdeployfornetservex.online";
-  const BASE = `${BASE_ORIGIN}/sudobe/api/catalogue`;
+  const BASE = `${BASE_ORIGIN}${window.BASE_PATH}/api/catalogue`;
 
   const API = {
     categories: () => `${BASE}/categories`,
