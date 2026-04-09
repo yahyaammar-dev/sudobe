@@ -12,10 +12,12 @@ router.post('/check-container-tracking', webhookController.checkContainerTrackin
 // Configure in Swell dashboard → Settings → Webhooks → product.updated → POST /webhook/product-price-updated
 router.post('/product-price-updated', async (req, res) => {
   try {
-    const product = req.body;
+    // Swell wraps the payload: { type: 'product.updated', data: { ...product } }
+    const product = req.body?.data || req.body;
 
     // Validate we have a product with an id and price
     if (!product || !product.id || product.price === undefined) {
+      console.error('Invalid webhook payload:', JSON.stringify(req.body));
       return res.status(400).json({ success: false, message: 'Invalid payload' });
     }
 
