@@ -24,12 +24,13 @@ router.post('/product-price-updated', async (req, res) => {
     const newPrice = parseFloat(product.price) || 0;
     const lastKnownPrice = parseFloat(product.content?.last_known_price);
 
-    // If last_known_price is not set yet, initialise it without marking as updated
+    // If last_known_price is not set yet, initialise it and stamp price_last_updated now
     if (isNaN(lastKnownPrice)) {
       await swell.put(`/products/${product.id}`, {
         content: {
           ...(product.content || {}),
-          last_known_price: newPrice
+          last_known_price: newPrice,
+          price_last_updated: new Date().toISOString()
         }
       });
       return res.json({ success: true, action: 'initialised' });
