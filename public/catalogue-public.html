@@ -148,13 +148,14 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script>
 // global image error handler — avoids inline escaping issues
 function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
 </script>
 <script>
 (function(){
-  const BASE = '/api/catalogue';
+  const BASE = (window.BASE_PATH || '') + '/api/catalogue';
 
   const groups   = {};  // { fid: { factory, products:[] } }
   const allProds = {};  // { pid: product }
