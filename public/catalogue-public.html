@@ -123,7 +123,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <img src="/assets/2F2D04C8-0980-4F09-9B56-7D5E536CBA15.PNG" alt="SODU" class="topbar-logo">
+    <img id="topbarLogo" alt="SODU" class="topbar-logo">
   </div>
 </div>
 
@@ -150,6 +150,7 @@
 
 <script src="config.js"></script>
 <script>
+document.getElementById('topbarLogo').src = (window.BASE_PATH||'') + '/assets/2F2D04C8-0980-4F09-9B56-7D5E536CBA15.PNG';
 // product image error — show placeholder background
 function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
 // factory logo error — show initials fallback
