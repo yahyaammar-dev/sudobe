@@ -3,6 +3,7 @@ const router = express.Router();
 const catalogueController = require('../controllers/catalogueController');
 
 router.get('/search-products', catalogueController.searchProductsGroupedByFactory);
+router.get('/all-products', catalogueController.getAllProductsGroupedByFactory);
 router.get('/by-factory/:factoryId/:accountId', catalogueController.searchProductsByFactory);
 router.get('/cancelorder/:orderId', catalogueController.cancelOrder);
 router.get('/featured-products', catalogueController.getFeaturedProducts);
