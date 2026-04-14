@@ -298,6 +298,11 @@ async function processImagesForExistingProduct(imageUrls, existingProduct) {
 }
 
 
+// Public catalogue page — no auth required
+router.get('/catalogue', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'catalogue-public.html'));
+});
+
 router.get('/', verifyToken, async (req, res) => {
   // Log activity: user visited content management page
   try {

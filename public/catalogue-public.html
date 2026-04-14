@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SODU — Factory Catalogue</title>
+  <style>
+    :root{
+      --green:#0C8F3C;--dark:#0b363c;--bg:#f5f5f7;--card:#fff;
+      --muted:#6b7280;--line:#e5e7eb;--radius:14px;
+      --shadow:0 1px 6px rgba(0,0,0,.07);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111;-webkit-font-smoothing:antialiased}
+
+    /* ── top bar ── */
+    .topbar{position:sticky;top:0;z-index:30;background:var(--dark)}
+    .topbar-inner{max-width:1040px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;justify-content:center}
+    .topbar-logo{height:30px;object-fit:contain}
+
+    /* ── layout ── */
+    .wrap{max-width:1040px;margin:0 auto;padding:12px 10px 40px}
+
+    /* ── search ── */
+    .searchbar{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px;box-shadow:var(--shadow)}
+    .searchbar input{flex:1;border:0;outline:0;font-size:14px;color:#111;background:transparent}
+    .searchbar input::placeholder{color:#bbb}
+    .searchbar svg{flex-shrink:0;opacity:.4}
+    #clearBtn{cursor:pointer;opacity:.4;display:none}
+
+    /* ── factory section ── */
+    .factory-section{background:var(--card);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow);border:1px solid var(--line)}
+
+    /* factory header row (no cover image) */
+    .factory-header{display:flex;align-items:center;gap:10px;padding:12px 14px}
+    .factory-logo{width:44px;height:44px;border-radius:999px;border:1.5px solid var(--line);background:#f3f4f6;overflow:hidden;flex-shrink:0}
+    .factory-logo img{width:100%;height:100%;object-fit:contain;padding:5px;display:block}
+    .factory-logo .ini{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:var(--dark)}
+    .factory-name-row{flex:1;min-width:0}
+    .factory-name{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .factory-sub{color:var(--muted);font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .badges{display:inline-flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+    .badge{padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800}
+    .badge-v{background:#d1fae5;color:#065f46}
+    .badge-t{background:#dbeafe;color:#1e40af}
+
+    /* product grid — 3 cols mobile, 4 on ≥540, 5 on ≥900 */
+    .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line)}
+    @media(min-width:540px){.pgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(min-width:900px){.pgrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+    /* product card */
+    .pcard{background:#fff;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.04)}
+    .pcard:active{background:#f9fafb}
+
+    /* image area — fixed 130px, centred */
+    .pimg{height:130px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;padding:10px}
+    .pimg img{max-width:100%;max-height:110px;object-fit:contain;display:block}
+    /* fallback placeholder shown when image fails or is absent */
+    .pimg.broken,.pimg.empty{background:#f3f4f6}
+    .pimg.broken::after,.pimg.empty::after{
+      content:'';display:block;width:36px;height:36px;opacity:.2;
+      background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' stroke='%23666' stroke-width='1.5'/%3E%3Cpath d='M3 16l5-5 4 4 3-3 6 6' stroke='%23666' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5' fill='%23666'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+
+    .ptext{padding:8px 8px 12px}
+    .pname{font-size:12px;font-weight:700;line-height:1.35;color:#111;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px}
+    .pprice{font-size:13px;font-weight:900;color:var(--green);margin-top:5px}
+    .pprice-na{font-size:11px;font-weight:700;color:#bbb;margin-top:5px}
+    .pmoq{font-size:11px;font-weight:700;color:var(--muted);margin-top:2px}
+
+    /* count line */
+    .pcount{padding:6px 14px 4px;font-size:11px;font-weight:700;color:var(--muted);border-top:1px solid var(--line)}
+
+    /* loading dots */
+    .load-bar{text-align:center;padding:10px;font-size:12px;font-weight:700;color:var(--muted)}
+    .dot{display:inline-block;animation:blink 1.2s ease-in-out infinite}
+    .dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+    /* skeleton */
+    @keyframes pulse{0%,100%{opacity:.55}50%{opacity:.25}}
+    .skel{animation:pulse 1.3s ease-in-out infinite}
+    .sk-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px}
+    .sk-circle{width:44px;height:44px;border-radius:999px;background:#e0e0e0;flex-shrink:0}
+    .sk-lines{flex:1}.sk-l{height:12px;border-radius:4px;background:#e0e0e0;margin-bottom:6px}
+    .sk-l.s{width:55%}
+    .sk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line)}
+    @media(min-width:540px){.sk-grid{grid-template-columns:repeat(4,1fr)}}
+    .sk-cell{background:#fff;padding:8px}
+    .sk-img{height:110px;background:#f0f0f0;border-radius:3px;margin-bottom:6px}
+    .sk-tx{height:10px;background:#f0f0f0;border-radius:3px;margin-bottom:5px}
+    .sk-tx.s{width:55%}
+
+    /* empty */
+    .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+    .empty p{font-size:14px;font-weight:700;margin-top:10px}
+
+    /* ── detail sheet ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:60}
+    .overlay.open{display:flex}
+    @media(min-width:640px){.overlay{align-items:center}}
+    .sheet{width:100%;max-width:580px;background:#fff;border-radius:18px 18px 0 0;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain}
+    @media(min-width:640px){.sheet{border-radius:18px;max-height:85dvh}}
+    .sheet-handle{width:38px;height:4px;border-radius:99px;background:#e5e7eb;margin:10px auto 4px}
+    .sheet-head{position:sticky;top:0;background:#fff;padding:8px 14px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;z-index:1}
+    .sheet-title{font-weight:800;font-size:14px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .sheet-close{width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .sheet-body{padding:14px}
+    .pdp-img{width:100%;max-width:200px;height:200px;object-fit:contain;display:block;margin:0 auto 14px}
+    .pdp-name{font-size:17px;font-weight:900;line-height:1.25;letter-spacing:-.01em}
+    .pdp-price{font-size:20px;font-weight:900;color:var(--green);margin-top:6px}
+    .pdp-moq{font-size:13px;font-weight:700;color:var(--muted);margin-top:3px}
+    .pdp-by{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+    .divider{height:1px;background:var(--line);margin:12px 0}
+    .drow{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+    .drow:last-child{border-bottom:0}
+    .dk{color:var(--muted);font-weight:700}
+    .dv{font-weight:800;text-align:right;max-width:58%}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <img src="/assets/2F2D04C8-0980-4F09-9B56-7D5E536CBA15.PNG" alt="SODU" class="topbar-logo">
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="searchbar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input id="searchInput" placeholder="Search products or factories…" autocomplete="off" spellcheck="false"/>
+    <svg id="clearBtn" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </div>
+  <div id="main"></div>
+  <div id="loadBar" class="load-bar" style="display:none">Loading more<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title" id="sheetTitle"></span>
+      <button class="sheet-close" id="sheetClose">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<script>
+// global image error handler — avoids inline escaping issues
+function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
+</script>
+<script>
+(function(){
+  const BASE = '/api/catalogue';
+
+  const groups   = {};  // { fid: { factory, products:[] } }
+  const allProds = {};  // { pid: product }
+  let   rendered = {};
+
+  const $main    = document.getElementById('main');
+  const $loadBar = document.getElementById('loadBar');
+  const $overlay = document.getElementById('overlay');
+  const $sheet   = document.getElementById('sheet');
+  const $stitle  = document.getElementById('sheetTitle');
+  const $sbody   = document.getElementById('sheetBody');
+  const $search  = document.getElementById('searchInput');
+  const $clear   = document.getElementById('clearBtn');
+
+  let searchQuery = '';
+  let searchTimer = null;
+
+  /* ── utils ─────────────────────────────────────── */
+  const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const fmt = p => p==null ? null : '$'+Number(p).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const ini = n => (n||'').split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'F';
+
+  /* ── skeleton ──────────────────────────────────── */
+  function showSkeletons(){
+    let h = '';
+    for(let i=0;i<3;i++){
+      h += `<div class="factory-section skel">
+        <div class="sk-hdr">
+          <div class="sk-circle"></div>
+          <div class="sk-lines"><div class="sk-l" style="width:40%"></div><div class="sk-l s"></div></div>
+        </div>
+        <div class="sk-grid">
+          ${Array(6).fill(`<div class="sk-cell"><div class="sk-img"></div><div class="sk-tx"></div><div class="sk-tx s"></div></div>`).join('')}
+        </div>
+      </div>`;
+    }
+    $main.innerHTML = h;
+  }
+
+  /* ── product card HTML ─────────────────────────── */
+  function productCard(p, fid){
+    const img   = (p.images||[])[0]||'';
+    const price = fmt(p.price);
+    const moq   = p.moq != null ? p.moq : null;
+
+    // use onerror="imgFail(this)" — references the global, no inline HTML injection
+    const imgTag = img
+      ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="imgFail(this)">`
+      : '';
+    const imgWrapCls = img ? 'pimg' : 'pimg empty';
+
+    return `<div class="pcard" data-pid="${esc(p.id)}" data-fid="${esc(fid)}">
+      <div class="${imgWrapCls}">${imgTag}</div>
+      <div class="ptext">
+        <div class="pname">${esc(p.name||'—')}</div>
+        ${price ? `<div class="pprice">${esc(price)}</div>` : `<div class="pprice-na">On request</div>`}
+        ${moq != null ? `<div class="pmoq">MOQ ${esc(moq)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  /* ── factory section HTML ──────────────────────── */
+  function factoryHTML(fid){
+    const g = groups[fid];
+    if(!g) return '';
+    const f = g.factory||{};
+    const c = f.content||{};
+    const name    = c.factory_name||f.name||'Factory';
+    const logo    = c.store_front_logo?.url||c.store_front_logo?.file?.url||'';
+    const city    = c.city||'';
+    const country = c.country||'';
+    const loc     = [city,country].filter(Boolean).join(', ');
+    const minOrd  = c.minimum_quantity ? `Min. order ${c.minimum_quantity}` : '';
+    const sub     = [loc,minOrd].filter(Boolean).join(' · ');
+
+    const logoInner = logo
+      ? `<img src="${esc(logo)}" alt="" loading="lazy" onerror="imgFail(this)">`
+      : `<div class="ini">${esc(ini(name))}</div>`;
+
+    const bdg = [
+      c.verified===true ? `<span class="badge badge-v">✓ Verified</span>` : '',
+      c.vetted===true   ? `<span class="badge badge-t">✓ Vetted</span>`   : ''
+    ].filter(Boolean).join('');
+
+    const products = visibleProducts(g.products);
+    const cards    = products.map(p=>productCard(p,fid)).join('');
+
+    return `<div class="factory-section" data-fid="${esc(fid)}">
+      <div class="factory-header">
+        <div class="factory-logo">${logoInner}</div>
+        <div class="factory-name-row">
+          <div class="factory-name">${esc(name)}</div>
+          ${sub ? `<div class="factory-sub">${esc(sub)}</div>` : ''}
+          ${bdg ? `<div class="badges">${bdg}</div>` : ''}
+        </div>
+      </div>
+      <div class="pcount">${g.products.length} product${g.products.length!==1?'s':''}</div>
+      <div class="pgrid" id="pg-${esc(fid)}">${cards}</div>
+    </div>`;
+  }
+
+  function visibleProducts(prods){
+    if(!searchQuery) return prods;
+    const q = searchQuery.toLowerCase();
+    return prods.filter(p=>(p.name||'').toLowerCase().includes(q));
+  }
+
+  /* ── progressive DOM update ────────────────────── */
+  function flush(){
+    if(searchQuery){ renderSearch(); return; }
+
+    const fids = Object.keys(groups);
+    if(!fids.length) return;
+
+    if($main.querySelector('.skel')){
+      $main.innerHTML = '';
+      rendered = {};
+    }
+
+    for(const fid of fids){
+      const existing = $main.querySelector(`.factory-section[data-fid="${CSS.escape(fid)}"]`);
+      if(!existing){
+        const wrap = document.createElement('div');
+        wrap.innerHTML = factoryHTML(fid);
+        const node = wrap.firstElementChild;
+        $main.appendChild(node);
+        bindCards(node);
+        rendered[fid] = true;
+      } else {
+        const pg    = existing.querySelector('.pgrid');
+        const count = existing.querySelector('.pcount');
+        const g     = groups[fid];
+        if(pg && g){
+          pg.innerHTML = visibleProducts(g.products).map(p=>productCard(p,fid)).join('');
+          bindCards(pg);
+          if(count) count.textContent = `${g.products.length} product${g.products.length!==1?'s':''}`;
+        }
+      }
+    }
+  }
+
+  function renderSearch(){
+    const q = searchQuery.toLowerCase();
+    const matched = Object.entries(groups).filter(([,g])=>{
+      const fname = (g.factory?.content?.factory_name||g.factory?.name||'').toLowerCase();
+      return fname.includes(q)||(g.products||[]).some(p=>(p.name||'').toLowerCase().includes(q));
+    });
+    if(!matched.length){
+      $main.innerHTML = `<div class="empty"><p>No results for "${esc(searchQuery)}"</p></div>`;
+      return;
+    }
+    $main.innerHTML = matched.map(([fid])=>factoryHTML(fid)).join('');
+    bindCards($main);
+    rendered = {};
+  }
+
+  /* ── card click ─────────────────────────────────── */
+  function bindCards(root){
+    root.querySelectorAll('.pcard').forEach(card=>{
+      card.addEventListener('click', ()=>openDetail(card.dataset.pid));
+    });
+  }
+
+  /* ── product detail sheet ───────────────────────── */
+  function openDetail(pid){
+    const p = allProds[pid];
+    if(!p) return;
+    const img   = (p.images||[])[0]||'';
+    const price = fmt(p.price);
+    const moq   = p.moq;
+    const by    = p.sold_by||'';
+
+    let details = '';
+    if(p.product_details && typeof p.product_details==='object'){
+      for(const [k,v] of Object.entries(p.product_details)){
+        if(v==null||v==='') continue;
+        details += `<div class="drow"><span class="dk">${esc(k)}</span><span class="dv">${esc(String(v))}</span></div>`;
+      }
+    }
+
+    $stitle.textContent = p.name||'Product';
+    $sbody.innerHTML = `
+      ${img ? `<img class="pdp-img" src="${esc(img)}" alt="" onerror="this.style.display='none'">` : ''}
+      <div class="pdp-name">${esc(p.name||'—')}</div>
+      ${price ? `<div class="pdp-price">${esc(price)}</div>` : `<div style="font-size:15px;margin-top:6px;color:var(--muted);font-weight:700">Price on request</div>`}
+      ${moq!=null ? `<div class="pdp-moq">MOQ: ${esc(moq)} units</div>` : ''}
+      ${by ? `<div class="pdp-by">By ${esc(by)}</div>` : ''}
+      ${p.description ? `<div class="divider"></div><p style="font-size:13px;color:var(--muted);font-weight:600;line-height:1.55">${esc(p.description)}</p>` : ''}
+      ${details ? `<div class="divider"></div>${details}` : ''}
+    `;
+    $overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSheet(){
+    $overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  $overlay.addEventListener('click', e=>{ if(e.target===$overlay) closeSheet(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSheet(); });
+  let ty0=0;
+  $sheet.addEventListener('touchstart',e=>{ty0=e.touches[0].clientY;},{passive:true});
+  $sheet.addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-ty0>60&&$sheet.scrollTop<=0)closeSheet();},{passive:true});
+
+  /* ── search ─────────────────────────────────────── */
+  $search.addEventListener('input', e=>{
+    searchQuery = e.target.value;
+    $clear.style.display = searchQuery ? '' : 'none';
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(flush, 200);
+  });
+  $clear.addEventListener('click', ()=>{
+    $search.value = ''; searchQuery = '';
+    $clear.style.display = 'none';
+    flush(); $search.focus();
+  });
+
+  /* ── ingest API page ────────────────────────────── */
+  function ingestPage(data){
+    for(const g of (data.groupedByFactory||[])){
+      const fid = g.factory?.id;
+      if(!fid) continue;
+      if(!groups[fid]) groups[fid] = { factory: g.factory, products: [] };
+      for(const p of (g.products||[])){
+        allProds[p.id] = p;
+        if(!groups[fid].products.find(x=>x.id===p.id)){
+          groups[fid].products.push(p);
+        }
+      }
+    }
+  }
+
+  /* ── fetch all pages progressively ─────────────── */
+  async function loadAll(){
+    showSkeletons();
+    const limit = 100;
+    let page = 1, totalPages = 1;
+
+    while(page <= totalPages){
+      try{
+        const res  = await fetch(`${BASE}/search-products?limit=${limit}&page=${page}`);
+        const data = await res.json();
+        totalPages = data.pages ? Math.max(...Object.keys(data.pages).map(Number)) : 1;
+        ingestPage(data);
+        flush();
+        $loadBar.style.display = page < totalPages ? '' : 'none';
+        page++;
+      } catch(e){
+        console.error('Load error:', e);
+        break;
+      }
+    }
+    $loadBar.style.display = 'none';
+  }
+
+  loadAll();
+})();
+</script>
+</body>
+</html>
