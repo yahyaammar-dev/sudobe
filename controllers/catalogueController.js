@@ -161,7 +161,20 @@ exports.getAllProductsGroupedByFactory = async (req, res) => {
     try {
         const locale = req.query.locale || 'en-US';
 
-        // Fetch all products in one shot (Swell max limit = 1000)
+        // Fetch all verified factories first
+        const factoriesResult = await swell.get('/accounts', {
+            where: {
+                'content.factory_name': { $ne: null },
+                'content.verified': true,
+            },
+            limit: 1000,
+        });
+
+        const allFactories = (factoriesResult.results || []).filter(
+            acc => acc.content?.factory_name?.trim() && acc.content?.verified
+        );
+
+        // Fetch all products
         const result = await swell.get(`/products?$locale=${locale}`, {
             where: { 'content.factory_id': { $ne: null } },
             limit: 1000,
@@ -169,39 +182,23 @@ exports.getAllProductsGroupedByFactory = async (req, res) => {
 
         const products = result.results || [];
 
-        // Group by factory_id
+        // Group products by factory_id
         const factoryGroups = {};
-        const factoryIds = new Set();
         for (const product of products) {
             const fid = product?.content?.factory_id;
             if (!fid) continue;
-            factoryIds.add(fid);
             if (!factoryGroups[fid]) factoryGroups[fid] = [];
             factoryGroups[fid].push(product);
         }
 
-        // Fetch factory accounts
-        const factories = {};
-        const fidArray = Array.from(factoryIds);
-        if (fidArray.length > 0) {
-            const accounts = await swell.get('/accounts', {
-                where: { id: { $in: fidArray } },
-                limit: 1000,
-            });
-            for (const f of accounts.results || []) {
-                factories[f.id] = f;
-            }
-        }
-
-        // Combine and transform
-        const groupedByFactory = Object.keys(factoryGroups).map(fid => {
-            const factory = factories[fid];
-            let prods = factoryGroups[fid].map(p => ({ ...p, sold_by: factory?.name }));
+        // Build response: each factory with its nested products
+        const factories = allFactories.map(factory => {
+            let prods = (factoryGroups[factory.id] || []).map(p => ({ ...p, sold_by: factory.name }));
             prods = transformProducts(prods);
             return { factory, products: prods };
         });
 
-        res.json({ success: true, total: products.length, groupedByFactory });
+        res.json({ success: true, total: products.length, factories });
     } catch (err) {
         console.error('Error in getAllProductsGroupedByFactory:', err.message);
         res.status(500).json({ success: false, message: 'Internal Server Error' });
