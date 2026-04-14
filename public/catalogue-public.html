@@ -150,8 +150,10 @@
 
 <script src="config.js"></script>
 <script>
-// global image error handler — avoids inline escaping issues
+// product image error — show placeholder background
 function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
+// factory logo error — show initials fallback
+function logoFail(el){ const w=el.parentNode; w.innerHTML='<div class="ini">'+( w.dataset.ini||'F')+'</div>'; }
 </script>
 <script>
 (function(){
@@ -232,7 +234,7 @@ function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
     const sub     = [loc,minOrd].filter(Boolean).join(' · ');
 
     const logoInner = logo
-      ? `<img src="${esc(logo)}" alt="" loading="lazy" onerror="imgFail(this)">`
+      ? `<img src="${esc(logo)}" alt="" loading="lazy" onerror="logoFail(this)">`
       : `<div class="ini">${esc(ini(name))}</div>`;
 
     const bdg = [
@@ -245,7 +247,7 @@ function imgFail(el){ el.parentNode.classList.add('broken'); el.remove(); }
 
     return `<div class="factory-section" data-fid="${esc(fid)}">
       <div class="factory-header">
-        <div class="factory-logo">${logoInner}</div>
+        <div class="factory-logo" data-ini="${esc(ini(name))}">${logoInner}</div>
         <div class="factory-name-row">
           <div class="factory-name">${esc(name)}</div>
           ${sub ? `<div class="factory-sub">${esc(sub)}</div>` : ''}
