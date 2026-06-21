@@ -49,6 +49,9 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 // QA Report routes
 app.use('/api/qa', require('./routes/qaRoutes'));
 
+// RFQ Module integration routes (API key protected, no browser session required)
+app.use('/api/rfq', require('./routes/rfqRoutes'));
+
 // QC Report page route (protected)
 const verifyToken = require('./middleware/auth');
 app.get('/qa', verifyToken, (req, res) => {
