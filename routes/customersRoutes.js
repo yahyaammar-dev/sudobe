@@ -6,6 +6,14 @@ const { swell } = require('swell-node');
 swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 const ActivityLogger = require('../services/activityLogger');
 
+// Strip fields that should never leave the server (used for API-key consumers)
+function stripSensitiveCustomerFields(account) {
+  if (!account) return null;
+  const { content = {}, ...rest } = account;
+  const { password, otp, otpExpiry, otpVerified, quotes, ...safeContent } = content;
+  return { ...rest, content: safeContent };
+}
+
 /**
  * Validate phone number format
  * - Must be numeric only (no + sign, no spaces, no dashes)
@@ -118,7 +126,7 @@ router.get('/api', async (req, res) => {
 });
 
 // Get all customers only (factories explicitly excluded, no order lookups)
-router.get('/api/clients', async (req, res) => {
+async function getClientsOnly(req, res) {
   try {
     const customers = await swell.get('/accounts', {
       where: {
@@ -130,7 +138,9 @@ router.get('/api/clients', async (req, res) => {
     const baseCustomers = customers.results || [];
 
     // Guard against Swell's where-clause not filtering factories out reliably
-    const customersOnly = baseCustomers.filter(customer => !customer.content?.factory_name);
+    const customersOnly = baseCustomers
+      .filter(customer => !customer.content?.factory_name)
+      .map(stripSensitiveCustomerFields);
 
     res.json({
       success: true,
@@ -143,7 +153,9 @@ router.get('/api/clients', async (req, res) => {
       message: 'Failed to fetch customers'
     });
   }
-});
+}
+
+router.get('/api/clients', getClientsOnly);
 
 // Get a single customer
 router.get('/api/:id', async (req, res) => {
@@ -347,4 +359,5 @@ router.delete('/api/addresses/:addressId', accountsController.deleteAddress);
 // Export both the page handler and the router
 module.exports = serveCustomersPage;
 module.exports.router = router;
+module.exports.getClientsOnly = getClientsOnly;
 

@@ -69,6 +69,11 @@ app.use('/shipping-rates', verifyToken, require('./routes/shippingRatesRoutes').
 const serveCustomersPage = require('./routes/customersRoutes');
 app.get('/customers', verifyToken, serveCustomersPage);
 
+// Clients-only endpoint, accessible via RFQ API key (checked before the
+// session-protected /customers mount below, so it doesn't require CMS login)
+const rfqAuth = require('./middleware/rfqAuth');
+app.get('/customers/api/clients', rfqAuth, serveCustomersPage.getClientsOnly);
+
 // Customers API routes (protected)
 app.use('/customers', verifyToken, require('./routes/customersRoutes').router);
 
