@@ -117,6 +117,34 @@ router.get('/api', async (req, res) => {
   }
 });
 
+// Get all customers only (factories explicitly excluded, no order lookups)
+router.get('/api/clients', async (req, res) => {
+  try {
+    const customers = await swell.get('/accounts', {
+      where: {
+        'content.factory_name': null
+      },
+      limit: 1000
+    });
+
+    const baseCustomers = customers.results || [];
+
+    // Guard against Swell's where-clause not filtering factories out reliably
+    const customersOnly = baseCustomers.filter(customer => !customer.content?.factory_name);
+
+    res.json({
+      success: true,
+      data: customersOnly
+    });
+  } catch (error) {
+    console.error('Error fetching customers only:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch customers'
+    });
+  }
+});
+
 // Get a single customer
 router.get('/api/:id', async (req, res) => {
   try {
