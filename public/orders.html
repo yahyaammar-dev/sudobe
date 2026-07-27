@@ -405,7 +405,7 @@
   <script src="js/sidebar.js"></script>
 
   <script>
-    const API_BASE = '/orders/api';
+    const API_BASE = `${window.BASE_PATH || ''}/orders/api`;
     let ordersModal;
     let currentOrders = [];
     let accounts = [];
