@@ -718,13 +718,27 @@
       const moq = details.minimum_quantity ?? details.MOQ ?? p.moq ?? "—";
       const soldBy = p.sold_by ?? details.factory_name ?? details["Factory Name"] ?? "—";
 
-      const datasheetUrl = details.datasheet_url || "";
-      const specificationsUrl = details.specifications_url || "";
-      const catalogUrl = details.catalog_url || "";
+      // Keys may come back as "datasheet_url" (raw content) or "Datasheet Url" (prettified) — match either
+      const normKey = (s) => String(s).toLowerCase().replace(/[\s_]+/g, "");
+      const findDetail = (...names) => {
+        const targets = names.map(normKey);
+        for (const [k, v] of Object.entries(details)) {
+          if (targets.includes(normKey(k))) return v;
+        }
+        return "";
+      };
+      const docKeyNames = {
+        datasheet: ["datasheet_url", "datasheet"],
+        specifications: ["specifications_url", "specifications"],
+        catalog: ["catalog_url", "catalog"]
+      };
+      const datasheetUrl = findDetail(...docKeyNames.datasheet) || "";
+      const specificationsUrl = findDetail(...docKeyNames.specifications) || "";
+      const catalogUrl = findDetail(...docKeyNames.catalog) || "";
 
-      const hiddenKeys = new Set(["datasheet_url", "specifications_url", "catalog_url"]);
+      const hiddenNormKeys = new Set([...Object.values(docKeyNames)].flat().map(normKey));
       const rows = Object.entries(details)
-        .filter(([k]) => !hiddenKeys.has(k))
+        .filter(([k]) => !hiddenNormKeys.has(normKey(k)))
         .map(([k,v]) => `
         <div class="row"><div class="k">${esc(prettyKey(k))}</div><div class="v">${esc(String(v))}</div></div>
       `).join("");
