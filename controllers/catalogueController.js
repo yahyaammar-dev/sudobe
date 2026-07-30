@@ -275,15 +275,24 @@ exports.searchProductsByFactory = async (req, res) => {
             });
         }
 
-        // Step 2: Fetch products related to this factory
-        const productsResult = await swell.get('/products', {
-            where: {
-                'content.factory_id': factoryId,
-            },
-            limit: 100,
-        });
-
-        const products = productsResult?.results || [];
+        // Step 2: Fetch all products related to this factory (paginated — factories can have >100 products)
+        const products = [];
+        const pageLimit = 100;
+        let page = 1;
+        while (true) {
+            const productsResult = await swell.get('/products', {
+                where: {
+                    'content.factory_id': factoryId,
+                },
+                limit: pageLimit,
+                page,
+            });
+            const results = productsResult?.results || [];
+            products.push(...results);
+            const totalPages = productsResult?.pages || 1;
+            if (page >= totalPages || results.length === 0) break;
+            page++;
+        }
         const favoriteIds = user.metadata?.favorites || [];
 
         // Step 3: Get all category IDs from all products
