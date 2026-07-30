@@ -167,6 +167,28 @@
 
   <!-- Your custom admin script -->
   <script>
+    // Force-download a PDF (or any file) by URL instead of letting the browser open it inline.
+    async function downloadProductDocument(url, filename) {
+      if (!url) return;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch file');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename || 'document.pdf';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        // CORS or network failure - fall back to opening the file directly
+        console.warn('Direct download failed, opening in new tab instead:', err);
+        window.open(url, '_blank');
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       const section = params.get('section') || 'banners-list';
@@ -1683,6 +1705,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
                         <tr>
                           <th style="min-width: 10rem;">Factory</th>
                           <th style="min-width: 10rem;">Images</th>
+                          <th style="min-width: 8rem;">Documents</th>
                           <th style="min-width: 20rem;">Product</th>
                           <th style="min-width: 10rem;">Category</th>
                           <th style="min-width: 10rem;">Sub-Category</th>
@@ -1769,11 +1792,33 @@ function generateProductsPaginationControls(pagination, currentPage) {
                 } else {
                   imagesHtml = '<span class="text-muted small">No images</span>';
                 }
-                
+
+                // Document links (PDFs): DataSheet, Specifications, Catalog
+                const datasheetUrl = product.content?.datasheet_url || '';
+                const specificationsUrl = product.content?.specifications_url || '';
+                const catalogUrl = product.content?.catalog_url || '';
+                const docsHtml = `
+                  <div class="d-flex flex-column gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ${datasheetUrl ? '' : 'disabled'}
+                      onclick="downloadProductDocument('${datasheetUrl}', '${(productName || 'product').replace(/'/g, "\\'")} - Datasheet.pdf')">
+                      <i class="bi bi-file-earmark-pdf me-1"></i>Datasheet
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ${specificationsUrl ? '' : 'disabled'}
+                      onclick="downloadProductDocument('${specificationsUrl}', '${(productName || 'product').replace(/'/g, "\\'")} - Specifications.pdf')">
+                      <i class="bi bi-file-earmark-pdf me-1"></i>Specifications
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ${catalogUrl ? '' : 'disabled'}
+                      onclick="downloadProductDocument('${catalogUrl}', '${(productName || 'product').replace(/'/g, "\\'")} - Catalog.pdf')">
+                      <i class="bi bi-file-earmark-pdf me-1"></i>Catalog
+                    </button>
+                  </div>
+                `;
+
                 html += `
                   <tr>
                     <td>${factory}</td>
                     <td>${imagesHtml}</td>
+                    <td>${docsHtml}</td>
                     <td>
                       <strong>${productName}</strong>
                     </td>
@@ -1796,7 +1841,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
                 : (factoryFilter ? ' for this factory' : '');
               html += `
                 <tr>
-                  <td colspan="13" class="text-center text-muted py-4">
+                  <td colspan="14" class="text-center text-muted py-4">
                     <i class="bi bi-cart-x display-1 d-block mb-3"></i>
                     No products found${filterMessage}. 
                     ${searchFilter || factoryFilter ? '<a href="?section=products-list">Clear filters</a> or ' : ''}

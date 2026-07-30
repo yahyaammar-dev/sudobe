@@ -857,7 +857,8 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
         jsonData = dataRows.map(row => {
           const obj = {};
           headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
+            const key = typeof header === 'string' ? header.trim() : header;
+            obj[key] = row[index] || '';
           });
           return obj;
         });
@@ -897,6 +898,9 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
       'OldPrice',
       'CategoryName',
       'Images',
+      'DataSheet',
+      'Specifications',
+      'Catalog',
       'WeightValu',
       'WeightUnit',
       'CartonLength',
@@ -1306,6 +1310,11 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
             unit_quantity_fr: mainRow.UnitQuantityFR,
             expiry_date: mainRow.ExpiryDate,
 
+            // Document links
+            datasheet_url: mainRow.DataSheet || '',
+            specifications_url: mainRow.Specifications || '',
+            catalog_url: mainRow.Catalog || '',
+
             // Physical properties
             weight_value: parseFloat(mainRow.WeightValu) || 0,
             weight_unit: mainRow.WeightUnit,
@@ -1649,7 +1658,10 @@ router.get('/products/export', async (req, res) => {
         'UnitPerCarton': product.content?.unit_quantity || '',
         'UnitQuantityFR': product.content?.unit_quantity_fr || '',
         'ExpiryDate': product.content?.expiry_date || '',
-        'Images': product.images?.map(img => img.file?.url || img.url).filter(Boolean).join(',') || ''
+        'Images': product.images?.map(img => img.file?.url || img.url).filter(Boolean).join(',') || '',
+        'DataSheet': product.content?.datasheet_url || '',
+        'Specifications': product.content?.specifications_url || '',
+        'Catalog': product.content?.catalog_url || ''
       };
       // If product has variants, create additional rows for each variant
       if (product.variants && product.variants.length > 0) {
@@ -1693,7 +1705,10 @@ router.get('/products/export', async (req, res) => {
             'UnitQuantity': variant.unit_quantity || mainRow.UnitQuantity,
             'UnitQuantityFR': variant.unit_quantity_fr || mainRow.UnitQuantityFR,
             'ExpiryDate': variant.expiry_date || mainRow.ExpiryDate,
-            'Images': mainRow.Images
+            'Images': mainRow.Images,
+            'DataSheet': mainRow.DataSheet,
+            'Specifications': mainRow.Specifications,
+            'Catalog': mainRow.Catalog
           };
           excelData.push(variantRow);
         }
@@ -1741,7 +1756,10 @@ router.get('/products/export', async (req, res) => {
                 'UnitQuantity': variant.unit_quantity || mainRow.UnitQuantity,
                 'UnitQuantityFR': variant.unit_quantity_fr || mainRow.UnitQuantityFR,
                 'ExpiryDate': variant.expiry_date || mainRow.ExpiryDate,
-                'Images': mainRow.Images
+                'Images': mainRow.Images,
+                'DataSheet': mainRow.DataSheet,
+                'Specifications': mainRow.Specifications,
+                'Catalog': mainRow.Catalog
               };
               excelData.push(variantRow);
             }
