@@ -69,6 +69,16 @@
     .pdp{display:grid;grid-template-columns:220px 1fr;gap:16px;margin-top:12px}
     @media (max-width:760px){.pdp{grid-template-columns:1fr}}
     .pdp img{width:220px;max-width:100%;object-fit:contain}
+    .pdpGallery{position:relative;width:220px;max-width:100%}
+    .pdpGallery .pdpTrack{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .pdpGallery .pdpTrack::-webkit-scrollbar{display:none}
+    .pdpGallery .pdpTrack img{width:220px;max-width:100%;flex:0 0 100%;scroll-snap-align:center;object-fit:contain}
+    .pdpGallery .pdpNav{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1;padding:0}
+    .pdpGallery .pdpPrev{left:2px}
+    .pdpGallery .pdpNext{right:2px}
+    .pdpGallery .pdpDots{display:flex;gap:6px;justify-content:center;margin-top:8px}
+    .pdpGallery .pdpDot{width:7px;height:7px;border-radius:50%;background:var(--line);cursor:pointer;border:none;padding:0}
+    .pdpGallery .pdpDot.active{background:var(--accent)}
     .pdp h3{margin:0;font-size:20px;letter-spacing:-.01em}
     .pdp p{margin:8px 0 0;color:var(--muted);font-weight:700;line-height:1.45}
     .pillrow{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
@@ -536,7 +546,7 @@
 
       const name = p.name || "Product";
       const desc = p.description || "";
-      const image = pickImage(p);
+      const images = pickImages(p);
       const details = p.product_details || p.content || {};
 
       const moq = details.minimum_quantity ?? details.MOQ ?? p.moq ?? "—";
@@ -546,9 +556,20 @@
         <div class="row"><div class="k">${esc(prettyKey(k))}</div><div class="v">${esc(String(v))}</div></div>
       `).join("");
 
+      const galleryHtml = images.length > 1
+        ? `<div class="pdpGallery">
+             <div class="pdpTrack" id="pdpTrack">
+               ${images.map(src => `<img src="${escAttr(src)}" alt="${escAttr(name)}" onerror="this.onerror=null;this.style.display='none';">`).join("")}
+             </div>
+             <button class="pdpNav pdpPrev" id="pdpPrev" type="button" aria-label="Previous image">‹</button>
+             <button class="pdpNav pdpNext" id="pdpNext" type="button" aria-label="Next image">›</button>
+             <div class="pdpDots" id="pdpDots">${images.map((_,i) => `<button class="pdpDot${i===0?" active":""}" data-idx="${i}" aria-label="Go to image ${i+1}"></button>`).join("")}</div>
+           </div>`
+        : (images[0] ? `<img src="${escAttr(images[0])}" alt="${escAttr(name)}" onerror="this.onerror=null;this.style.display='none';">` : ``);
+
       $("pdpBody").innerHTML = `
         <div class="pdp">
-          <div>${image ? `<img src="${escAttr(image)}" alt="${escAttr(name)}" onerror="this.onerror=null;this.style.display='none';">` : ``}</div>
+          <div>${galleryHtml}</div>
           <div>
             <h3>${esc(name)}</h3>
             <div class="pillrow">
@@ -573,6 +594,29 @@
         const msg = encodeURIComponent(`Hi, I'm interested in: ${name}`);
         window.open(`https://wa.me/15557796106?text=${msg}`, "_blank");
       };
+
+      if (images.length > 1){
+        const track = $("pdpTrack");
+        const dots = Array.from(document.querySelectorAll("#pdpDots .pdpDot"));
+        let idx = 0;
+        const goTo = (i) => {
+          idx = (i + images.length) % images.length;
+          track.scrollTo({ left: track.clientWidth * idx, behavior: "smooth" });
+          dots.forEach((d, di) => d.classList.toggle("active", di === idx));
+        };
+        $("pdpPrev").onclick = () => goTo(idx - 1);
+        $("pdpNext").onclick = () => goTo(idx + 1);
+        dots.forEach((d, di) => { d.onclick = () => goTo(di); });
+        let scrollTimer;
+        track.addEventListener("scroll", () => {
+          clearTimeout(scrollTimer);
+          scrollTimer = setTimeout(() => {
+            const i = Math.round(track.scrollLeft / track.clientWidth);
+            idx = Math.max(0, Math.min(images.length - 1, i));
+            dots.forEach((d, di) => d.classList.toggle("active", di === idx));
+          }, 80);
+        });
+      }
 
       $("overlay").style.display = "flex";
       $("overlay").setAttribute("aria-hidden","false");
@@ -737,6 +781,22 @@
       }
     }
     return resolveImageUrl(obj?.image || obj?.thumbnail || obj?.photo);
+  }
+
+  function pickImages(obj){
+    const out = [];
+    const imgs = obj?.images;
+    if (Array.isArray(imgs)){
+      for (const it of imgs){
+        const u = resolveImageUrl(it);
+        if (u && !out.includes(u)) out.push(u);
+      }
+    }
+    if (!out.length){
+      const single = resolveImageUrl(obj?.image || obj?.thumbnail || obj?.photo);
+      if (single) out.push(single);
+    }
+    return out;
   }
 
   function normalizeCategory(c){
