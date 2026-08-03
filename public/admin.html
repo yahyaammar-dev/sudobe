@@ -944,8 +944,9 @@ function generateProductsPaginationControls(pagination, currentPage) {
   // Get current filters to preserve in pagination links
   const params = new URLSearchParams(window.location.search);
   const factoryFilter = params.get('factory') || '';
+  const categoryFilter = params.get('category') || '';
   const searchFilter = params.get('search') || '';
-  
+
   let html = `
     <div class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid #dee2e6; padding-top: 1rem;">
       <div class="text-muted fw-bold">
@@ -960,6 +961,9 @@ function generateProductsPaginationControls(pagination, currentPage) {
     let url = `?section=products-list&page=${pageNum}`;
     if (factoryFilter) {
       url += `&factory=${encodeURIComponent(factoryFilter)}`;
+    }
+    if (categoryFilter) {
+      url += `&category=${encodeURIComponent(categoryFilter)}`;
     }
     if (searchFilter) {
       url += `&search=${encodeURIComponent(searchFilter)}`;
@@ -1628,12 +1632,16 @@ function generateProductsPaginationControls(pagination, currentPage) {
 
         // Get filters from query parameters
         const factoryFilter = new URLSearchParams(window.location.search).get('factory') || '';
+        const categoryFilter = new URLSearchParams(window.location.search).get('category') || '';
         const searchFilter = new URLSearchParams(window.location.search).get('search') || '';
-        
+
         // Build API URL with filters if present
         let productsUrl = `${window.BASE_PATH}/api/content/products?page=${page}&limit=${limit}`;
         if (factoryFilter) {
           productsUrl += `&factory=${encodeURIComponent(factoryFilter)}`;
+        }
+        if (categoryFilter) {
+          productsUrl += `&category=${encodeURIComponent(categoryFilter)}`;
         }
         if (searchFilter) {
           productsUrl += `&search=${encodeURIComponent(searchFilter)}`;
@@ -1671,6 +1679,18 @@ function generateProductsPaginationControls(pagination, currentPage) {
             
             console.log('Total categories loaded:', categories.length);
             console.log('Category map keys:', Object.keys(categoryMap).length);
+            // Build category filter options (main categories with indented sub-categories)
+            const mainCategories = categories.filter(c => !c.parent_id);
+            let categoryOptionsHtml = '<option value="">All Categories</option>';
+            mainCategories.forEach(mainCat => {
+              const mainSelected = categoryFilter === mainCat.id ? 'selected' : '';
+              categoryOptionsHtml += `<option value="${mainCat.id}" ${mainSelected}>${mainCat.name}</option>`;
+              categories.filter(c => c.parent_id === mainCat.id).forEach(subCat => {
+                const subSelected = categoryFilter === subCat.id ? 'selected' : '';
+                categoryOptionsHtml += `<option value="${subCat.id}" ${subSelected}>&nbsp;&nbsp;&mdash; ${subCat.name}</option>`;
+              });
+            });
+
             let html = `
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="bi bi-cart me-2"></i>Products List</h2>
@@ -1678,15 +1698,18 @@ function generateProductsPaginationControls(pagination, currentPage) {
                   <select id="factoryFilter" class="form-select" style="width: 200px;">
                     <option value="">All Factories</option>
             `;
-            
+
             // Add factory options
             factories.forEach(factory => {
               const factoryName = factory.content?.factory_name || factory.name || 'Unnamed Factory';
               const selected = factoryFilter === factory.id ? 'selected' : '';
               html += `<option value="${factory.id}" ${selected}>${factoryName}</option>`;
             });
-            
+
             html += `
+                  </select>
+                  <select id="categoryFilter" class="form-select" style="width: 200px;">
+                    ${categoryOptionsHtml}
                   </select>
                   <input type="text" id="productSearch" class="form-control" placeholder="Search products..." style="width: 250px;" value="${searchFilter}">
                   <a href="?section=products" class="btn btn-outline-secondary">
@@ -1699,10 +1722,25 @@ function generateProductsPaginationControls(pagination, currentPage) {
               </div>
               <div class="card">
                 <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-muted">
+                      <span id="selectedCountLabel">0 products selected</span>
+                      <a href="javascript:void(0)" id="clearSelectionBtn" class="ms-2">Clear selection</a>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="button" id="exportSelectedBtn" class="btn btn-primary btn-sm" disabled>
+                        <i class="bi bi-download me-1"></i>Export Selected (<span id="exportSelectedCount">0</span>)
+                      </button>
+                      <button type="button" id="exportFilteredBtn" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download me-1"></i>Export All Matching Filters
+                      </button>
+                    </div>
+                  </div>
                   <div class="table-responsive">
                     <table class="table table-hover table-sm">
                       <thead class="table-dark">
                         <tr>
+                          <th style="width: 2.5rem;"><input type="checkbox" id="selectAllProductsCheckbox" class="form-check-input"></th>
                           <th style="min-width: 10rem;">Factory</th>
                           <th style="min-width: 10rem;">Images</th>
                           <th style="min-width: 8rem;">Documents</th>
@@ -1816,6 +1854,7 @@ function generateProductsPaginationControls(pagination, currentPage) {
 
                 html += `
                   <tr>
+                    <td><input type="checkbox" class="form-check-input product-select-checkbox" data-id="${product.id}"></td>
                     <td>${factory}</td>
                     <td>${imagesHtml}</td>
                     <td>${docsHtml}</td>
@@ -1836,15 +1875,15 @@ function generateProductsPaginationControls(pagination, currentPage) {
                 `;
               });
             } else {
-              const filterMessage = searchFilter 
-                ? ` matching "${searchFilter}"` 
-                : (factoryFilter ? ' for this factory' : '');
+              const filterMessage = searchFilter
+                ? ` matching "${searchFilter}"`
+                : ((factoryFilter || categoryFilter) ? ' for the selected filters' : '');
               html += `
                 <tr>
-                  <td colspan="14" class="text-center text-muted py-4">
+                  <td colspan="15" class="text-center text-muted py-4">
                     <i class="bi bi-cart-x display-1 d-block mb-3"></i>
-                    No products found${filterMessage}. 
-                    ${searchFilter || factoryFilter ? '<a href="?section=products-list">Clear filters</a> or ' : ''}
+                    No products found${filterMessage}.
+                    ${searchFilter || factoryFilter || categoryFilter ? '<a href="?section=products-list">Clear filters</a> or ' : ''}
                     <a href="?section=products">Import products</a>
                   </td>
                 </tr>
@@ -1875,20 +1914,179 @@ function generateProductsPaginationControls(pagination, currentPage) {
                 const selectedFactory = e.target.value;
                 const currentUrl = new URLSearchParams(window.location.search);
                 currentUrl.set('section', 'products-list');
-                
+
                 // Always explicitly set page to 1 when factory filter changes
                 currentUrl.set('page', '1');
-                
+
                 if (selectedFactory) {
                   currentUrl.set('factory', selectedFactory);
                 } else {
                   currentUrl.delete('factory');
                 }
-                
+
                 window.location.search = currentUrl.toString();
               });
             }
-            
+
+            // Add category filter functionality
+            const categoryFilterSelect = document.getElementById('categoryFilter');
+            if (categoryFilterSelect) {
+              categoryFilterSelect.addEventListener('change', (e) => {
+                const selectedCategory = e.target.value;
+                const currentUrl = new URLSearchParams(window.location.search);
+                currentUrl.set('section', 'products-list');
+                currentUrl.set('page', '1');
+
+                if (selectedCategory) {
+                  currentUrl.set('category', selectedCategory);
+                } else {
+                  currentUrl.delete('category');
+                }
+
+                window.location.search = currentUrl.toString();
+              });
+            }
+
+            // === Product selection (checkboxes) + export ===
+            const SELECTED_PRODUCTS_KEY = 'selectedProductIdsForExport';
+
+            const getSelectedIds = () => {
+              try {
+                return new Set(JSON.parse(sessionStorage.getItem(SELECTED_PRODUCTS_KEY) || '[]'));
+              } catch (e) {
+                return new Set();
+              }
+            };
+
+            const saveSelectedIds = (idsSet) => {
+              sessionStorage.setItem(SELECTED_PRODUCTS_KEY, JSON.stringify(Array.from(idsSet)));
+            };
+
+            const selectedIds = getSelectedIds();
+
+            const updateSelectionUI = () => {
+              const count = selectedIds.size;
+              const countLabel = document.getElementById('selectedCountLabel');
+              const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+              const exportSelectedCount = document.getElementById('exportSelectedCount');
+              if (countLabel) countLabel.textContent = `${count} product${count === 1 ? '' : 's'} selected`;
+              if (exportSelectedCount) exportSelectedCount.textContent = count;
+              if (exportSelectedBtn) exportSelectedBtn.disabled = count === 0;
+
+              const rowCheckboxes = document.querySelectorAll('.product-select-checkbox');
+              const selectAllCheckbox = document.getElementById('selectAllProductsCheckbox');
+              if (selectAllCheckbox && rowCheckboxes.length > 0) {
+                const checkedOnPage = Array.from(rowCheckboxes).filter(cb => cb.checked).length;
+                selectAllCheckbox.checked = checkedOnPage === rowCheckboxes.length;
+                selectAllCheckbox.indeterminate = checkedOnPage > 0 && checkedOnPage < rowCheckboxes.length;
+              }
+            };
+
+            // Initialize checkboxes from stored selection
+            document.querySelectorAll('.product-select-checkbox').forEach(cb => {
+              cb.checked = selectedIds.has(cb.dataset.id);
+              cb.addEventListener('change', () => {
+                if (cb.checked) {
+                  selectedIds.add(cb.dataset.id);
+                } else {
+                  selectedIds.delete(cb.dataset.id);
+                }
+                saveSelectedIds(selectedIds);
+                updateSelectionUI();
+              });
+            });
+            updateSelectionUI();
+
+            const selectAllCheckbox = document.getElementById('selectAllProductsCheckbox');
+            if (selectAllCheckbox) {
+              selectAllCheckbox.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                document.querySelectorAll('.product-select-checkbox').forEach(cb => {
+                  cb.checked = checked;
+                  if (checked) {
+                    selectedIds.add(cb.dataset.id);
+                  } else {
+                    selectedIds.delete(cb.dataset.id);
+                  }
+                });
+                saveSelectedIds(selectedIds);
+                updateSelectionUI();
+              });
+            }
+
+            const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            if (clearSelectionBtn) {
+              clearSelectionBtn.addEventListener('click', () => {
+                selectedIds.clear();
+                saveSelectedIds(selectedIds);
+                document.querySelectorAll('.product-select-checkbox').forEach(cb => cb.checked = false);
+                updateSelectionUI();
+              });
+            }
+
+            const downloadExportedFile = async (url, button, originalHtml) => {
+              try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                  const errorData = await response.json().catch(() => ({}));
+                  throw new Error(errorData.error || 'Export failed');
+                }
+
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'products_export.xlsx';
+                if (contentDisposition) {
+                  const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                  if (filenameMatch) filename = filenameMatch[1];
+                }
+
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(blobUrl);
+                document.body.removeChild(a);
+              } catch (error) {
+                console.error('Error exporting products:', error);
+                alert(`Error exporting products: ${error.message}`);
+              } finally {
+                if (button) {
+                  button.innerHTML = originalHtml;
+                  button.disabled = button.id === 'exportSelectedBtn' ? selectedIds.size === 0 : false;
+                }
+              }
+            };
+
+            const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+            if (exportSelectedBtn) {
+              exportSelectedBtn.addEventListener('click', () => {
+                if (selectedIds.size === 0) return;
+                const originalHtml = exportSelectedBtn.innerHTML;
+                exportSelectedBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exporting...';
+                exportSelectedBtn.disabled = true;
+                const url = `${window.BASE_PATH}/api/content/products/export?ids=${encodeURIComponent(Array.from(selectedIds).join(','))}`;
+                downloadExportedFile(url, exportSelectedBtn, originalHtml);
+              });
+            }
+
+            const exportFilteredBtn = document.getElementById('exportFilteredBtn');
+            if (exportFilteredBtn) {
+              exportFilteredBtn.addEventListener('click', () => {
+                const originalHtml = exportFilteredBtn.innerHTML;
+                exportFilteredBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exporting...';
+                exportFilteredBtn.disabled = true;
+                let url = `${window.BASE_PATH}/api/content/products/export?`;
+                const urlParams = new URLSearchParams();
+                if (factoryFilter) urlParams.set('factory', factoryFilter);
+                if (categoryFilter) urlParams.set('category', categoryFilter);
+                if (searchFilter) urlParams.set('search', searchFilter);
+                url += urlParams.toString();
+                downloadExportedFile(url, exportFilteredBtn, originalHtml);
+              });
+            }
+
             // Add search functionality with debouncing
             const searchInput = document.getElementById('productSearch');
             if (searchInput) {

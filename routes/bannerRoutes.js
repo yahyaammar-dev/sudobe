@@ -350,6 +350,7 @@ router.get('/products', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const factoryId = req.query.factory || '';
+    const categoryId = req.query.category || '';
 
     // Build query options
     const queryOptions = {
@@ -374,6 +375,14 @@ router.get('/products', async (req, res) => {
           'content.factory_id': { $in: verifiedFactoryIds }
         };
       }
+    }
+
+    // If a specific category is selected, filter by that category too
+    if (categoryId) {
+      queryOptions.where = {
+        ...(queryOptions.where || {}),
+        category_id: categoryId
+      };
     }
 
     // Fetch products with pagination
@@ -1498,16 +1507,42 @@ router.post('/products', upload.single('excelFile'), async (req, res) => {
 router.get('/products/export', async (req, res) => {
   try {
 
+    // Optional selection/filters: export only chosen products, or products matching filters
+    const idsParam = req.query.ids || '';
+    const factoryId = req.query.factory || '';
+    const categoryId = req.query.category || '';
+    const searchTerm = req.query.search || '';
+
+    const where = {};
+    if (idsParam) {
+      const ids = idsParam.split(',').map(id => id.trim()).filter(Boolean);
+      if (ids.length > 0) {
+        where.id = { $in: ids };
+      }
+    } else {
+      if (factoryId) {
+        where['content.factory_id'] = factoryId;
+      }
+      if (categoryId) {
+        where.category_id = categoryId;
+      }
+    }
+
+    const queryOptionsEN = { limit: 1000, expand: ['category', 'images', 'variants'] };
+    const queryOptionsFR = { limit: 1000, expand: ['category', 'images', 'variants'] };
+    if (Object.keys(where).length > 0) {
+      queryOptionsEN.where = where;
+      queryOptionsFR.where = where;
+    }
+    if (searchTerm) {
+      queryOptionsEN.search = searchTerm;
+      queryOptionsFR.search = searchTerm;
+    }
+
     // Fetch products in both English and French locales
     const [productsResponseEN, productsResponseFR] = await Promise.all([
-      swell.get('/products?$locale=en', {
-        limit: 1000,
-        expand: ['category', 'images', 'variants']
-      }),
-      swell.get('/products?$locale=fr', {
-        limit: 1000,
-        expand: ['category', 'images', 'variants']
-      })
+      swell.get('/products?$locale=en', queryOptionsEN),
+      swell.get('/products?$locale=fr', queryOptionsFR)
     ]);
 
     const productsEN = productsResponseEN.results || [];
