@@ -1884,33 +1884,12 @@ router.get('/products/export', async (req, res) => {
 // Get list of factories for export filters
 router.get('/products/factories', async (req, res) => {
   try {
-    // Fetch all products to get unique factory IDs
-    const productsResponse = await swell.get('/products', {
-      limit: 1000,
-      where: {
-        'content.factory_id': { $ne: null }
-      }
-    });
+    // Fetch all valid, verified factories (not just ones already linked to a product)
+    const validFactories = await fetchFactories();
 
-    const products = productsResponse.results || [];
-    const factoryIds = [...new Set(products.map(p => p.content?.factory_id).filter(Boolean))];
-
-    if (factoryIds.length === 0) {
-      return res.json({
-        success: true,
-        factories: []
-      });
-    }
-
-    // Fetch factory details
-    const factoriesResponse = await swell.get('/accounts', {
-      where: { id: { $in: factoryIds } },
-      limit: factoryIds.length
-    });
-
-    const factories = (factoriesResponse.results || []).map(factory => ({
+    const factories = validFactories.map(factory => ({
       id: factory.id,
-      name: factory.name || factory.id
+      name: factory.content?.factory_name || factory.name || factory.id
     }));
 
     res.json({
