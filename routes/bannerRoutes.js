@@ -160,6 +160,22 @@ async function fetchProducts(searchTerm = '') {
   }
 }
 
+// Helper function to fetch every page of a product query, since Swell caps a single request at 1000 results
+async function fetchAllProducts(url, baseOptions = {}) {
+  const pageLimit = 1000;
+  const allResults = [];
+  let page = 1;
+  while (true) {
+    const response = await swell.get(url, { ...baseOptions, limit: pageLimit, page });
+    const results = response?.results || [];
+    allResults.push(...results);
+    const totalPages = response?.pages || 1;
+    if (page >= totalPages || results.length === 0) break;
+    page++;
+  }
+  return allResults;
+}
+
 // Helper function to fetch factories
 async function fetchFactories() {
   try {
@@ -1528,8 +1544,8 @@ router.get('/products/export', async (req, res) => {
       }
     }
 
-    const queryOptionsEN = { limit: 1000, expand: ['category', 'images', 'variants'] };
-    const queryOptionsFR = { limit: 1000, expand: ['category', 'images', 'variants'] };
+    const queryOptionsEN = { expand: ['category', 'images', 'variants'] };
+    const queryOptionsFR = { expand: ['category', 'images', 'variants'] };
     if (Object.keys(where).length > 0) {
       queryOptionsEN.where = where;
       queryOptionsFR.where = where;
@@ -1539,14 +1555,11 @@ router.get('/products/export', async (req, res) => {
       queryOptionsFR.search = searchTerm;
     }
 
-    // Fetch products in both English and French locales
-    const [productsResponseEN, productsResponseFR] = await Promise.all([
-      swell.get('/products?$locale=en', queryOptionsEN),
-      swell.get('/products?$locale=fr', queryOptionsFR)
+    // Fetch all products (paginated) in both English and French locales
+    const [productsEN, productsFR] = await Promise.all([
+      fetchAllProducts('/products?$locale=en', queryOptionsEN),
+      fetchAllProducts('/products?$locale=fr', queryOptionsFR)
     ]);
-
-    const productsEN = productsResponseEN.results || [];
-    const productsFR = productsResponseFR.results || [];
 
 
     // Merge products from both locales by product ID
@@ -1941,16 +1954,13 @@ router.get('/products/export-pdf', async (req, res) => {
       }
     }
 
-    // Fetch products for all selected factories
-    const productsResponse = await swell.get('/products', {
-      limit: 1000,
+    // Fetch all products (paginated) for all selected factories
+    const products = await fetchAllProducts('/products', {
       where: {
         'content.factory_id': { $in: factoryIdArray }
       },
       expand: ['images']
     });
-
-    const products = productsResponse.results || [];
 
     if (products.length === 0) {
       return res.status(404).json({
